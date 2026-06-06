@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "New Tab - GLASS WIDGETS",
+  "version": "1.1.0",
+  "description": "Personal new tab with movable widgets (long-press to move), grid snapping, dock editing, glass theme and background image.",
+  "chrome_url_overrides": { "newtab": "newtab.html" },
+  "background": { "service_worker": "background.js" },
+  "permissions": ["storage", "alarms", "notifications"],
+  "host_permissions": [
+    "https://*/*",
+    "http://*/*",
+    "https://api.cricapi.com/*",
+    "https://openrouter.ai/*",
+    "https://cricket-api-free-data.p.rapidapi.com/*",
+    "https://api.web3forms.com/*",
+    "https://api.unsplash.com/*",
+    "https://images.unsplash.com/*"
+  ],
+  "icons": {
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

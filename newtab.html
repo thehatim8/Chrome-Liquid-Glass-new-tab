@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>New Tab</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="app-booting">
+    <div id="app">
+
+        <header class="topbar">
+            <div class="left">
+                <div id="greeting">Hello.</div>
+            </div>
+            <div class="right">
+                <button id="openSettings" class="icon-btn" title="Settings" aria-label="Settings">
+                    <img src="icons/settings-white.svg" alt="">
+                </button>
+            </div>
+        </header>
+
+        <main id="workspace">
+            <!-- Widgets -->
+            <div class="widget" id="widget-search" data-widget="search">
+                <div class="widget-handle">Search</div>
+                <div class="widget-body">
+                    <form id="searchForm">
+                        <input id="searchInput" type="text" placeholder="Search the web (press Enter)" autocomplete="off">
+                    </form>
+                    <div id="searchSuggestions" class="search-suggestions hidden"></div>
+                    <div class="search-shortcuts">
+                        <button data-engine="https://www.google.com/search?q=">Google</button>
+                        <button data-engine="https://www.duckduckgo.com/?q=">DuckDuckGo</button>
+                        <button data-engine="https://www.bing.com/search?q=">Bing</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="widget" id="widget-clock" data-widget="clock">
+                <div class="widget-handle">Clock</div>
+                <div class="widget-body">
+                    <div id="clockDigital" class="clock-digital"></div>
+                    <div id="clockAnalog" class="clock-analog" aria-hidden="true"></div>
+                </div>
+            </div>
+
+            <div class="widget" id="widget-todo" data-widget="todo">
+                <div class="widget-handle">Todo</div>
+                <div class="widget-body">
+                    <div class="todo-controls">
+                        <input id="todoInput" placeholder="Add a task and press Enter">
+                    </div>
+                    <ul id="todoList" class="todo-list"></ul>
+                </div>
+            </div>
+
+            <div class="widget" id="widget-image" data-widget="image">
+                <div class="widget-handle">Image</div>
+                <div class="widget-body image-widget-body">
+                    <div class="image-frame">
+                        <img id="imageWidgetPreview" class="image-widget-preview hidden" alt="Custom widget image" draggable="false">
+                        <div id="imageWidgetEmpty" class="image-widget-empty">No image selected</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="widget" id="widget-notes" data-widget="notes">
+                <div class="widget-handle">Notes</div>
+                <div class="widget-body">
+                    <textarea id="notesInput" class="notes-input" placeholder="Write quick notes..."></textarea>
+                </div>
+            </div>
+
+            <div class="widget" id="widget-aichat" data-widget="aichat">
+                <div class="widget-handle">AI Chat</div>
+                <div class="widget-body ai-chat-body">
+                    <div id="aiChatMessages" class="ai-chat-messages"></div>
+                    <div class="ai-chat-compose">
+                        <input id="aiChatInput" class="ai-chat-input" type="text" placeholder="Type a message...">
+                        <button id="aiChatSend" type="button" class="btn-primary">Send</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="widget" id="widget-calendar" data-widget="calendar">
+                <div class="widget-handle">Calendar</div>
+                <div class="widget-body">
+                    <div class="calendar-header">
+                        <button id="calendarPrev" type="button" class="btn-secondary">Prev</button>
+                        <button id="calendarTitle" class="calendar-title calendar-title-btn" type="button"></button>
+                        <button id="calendarNext" type="button" class="btn-secondary">Next</button>
+                    </div>
+                    <div id="calendarPicker" class="calendar-picker hidden">
+                        <select id="calendarMonthSelect"></select>
+                        <select id="calendarYearSelect"></select>
+                        <button id="calendarApplyPicker" type="button" class="btn-secondary">Go</button>
+                    </div>
+                    <div id="calendarGrid" class="calendar-grid"></div>
+                </div>
+            </div>
+
+            <div class="widget" id="widget-dayprogress" data-widget="dayprogress">
+                <div class="widget-handle">Day Progress</div>
+                <div class="widget-body">
+                    <div id="dayProgressPct" class="day-progress-pct">0%</div>
+                    <div class="day-progress-track">
+                        <div id="dayProgressBar" class="day-progress-bar"></div>
+                    </div>
+                    <div id="dayProgressMeta" class="day-progress-meta"></div>
+                </div>
+            </div>
+
+            <div class="widget" id="widget-pomodoro" data-widget="pomodoro">
+                <div class="widget-handle">Pomodoro</div>
+                <div class="widget-body">
+                    <div id="pomodoroTime" class="pomodoro-time">25:00</div>
+                    <div id="pomodoroMode" class="pomodoro-mode">Focus</div>
+                    <div class="pomodoro-controls">
+                        <button id="pomodoroStartPause" type="button" class="btn-primary">Start</button>
+                        <button id="pomodoroReset" type="button" class="btn-secondary">Reset</button>
+                        <button id="pomodoroToggleMode" type="button" class="btn-secondary">Break</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="widget" id="widget-sports" data-widget="sports">
+                <div class="widget-handle">
+                    <span>Sports</span>
+                    <button id="sportsRefresh" class="btn-secondary sports-refresh-btn" type="button" title="Refresh" data-no-drag>Refresh</button>
+                </div>
+                <div class="widget-body sports-widget-body">
+                    <div id="sportsCompetition" class="sports-competition">ICC Men's T20 World Cup</div>
+                    <div id="sportsStatus" class="sports-status">Loading live scores...</div>
+                    <div class="sports-teams">
+                        <div id="sportsTeam1" class="sports-team-row">-</div>
+                        <div id="sportsTeam2" class="sports-team-row">-</div>
+                    </div>
+                    <div id="sportsMeta" class="sports-meta"></div>
+                </div>
+            </div>
+        </main>
+
+        <nav id="dock" class="dock">
+            <div class="dock-inner" id="dockInner">
+                <!-- left items will be rendered here -->
+                <div class="dock-separator" id="dockSeparator" aria-hidden="true"></div>
+                <!-- right-side items will be rendered here (editable area beside separator) -->
+                <div id="dockRight" class="dock-right"></div>
+                <button id="openDockEditor" class="dock-add-btn" title="Add dock item" aria-label="Add dock item">
+                    <img src="icons/add.svg" alt="">
+                </button>
+            </div>
+        </nav>
+
+        <!-- Settings modal -->
+        <div id="settings" class="modal hidden">
+            <div class="modal-card">
+                <h1>Settings</h1>
+
+                <label class="toggle-row">
+                    <input type="checkbox" id="toggleGlass">
+                    <span>Enable Liquid Glass Theme</span>
+                </label>
+
+                <label class="toggle-row">
+                    <input type="checkbox" id="toggleAnalog">
+                    <span>Show analog clock</span>
+                </label>
+
+                <label class="toggle-row">
+                    <input type="checkbox" id="toggleNotesAutoMath">
+                    <span>Notes: auto-calc on "="</span>
+                </label>
+
+                <div style="margin-top:8px">
+                    <label for="settingsUserName">Your name</label>
+                    <div style="display:flex;gap:8px;align-items:center">
+                        <input id="settingsUserName" type="text" maxlength="40" placeholder="Your name">
+                        <button id="saveUserName" class="btn-primary" type="button">Save Name</button>
+                    </div>
+                </div>
+
+                <div style="margin-top:8px">
+                    <label for="glassStyle">Glass style</label>
+                    <select id="glassStyle">
+                        <option value="dark">Dark Glass</option>
+                        <option value="light">Light Glass</option>
+                    </select>
+                </div>
+
+                <div id="glassDarknessRow" class="glassDarknessRow">
+                    <lable style="margin-right: 10px;" for="glassDarkness">Dark glass darkness: <span id="glassDarknessValue">68%</span></lable>
+                    <input id="glassDarkness" type="range" min="0" max="100" step="1" value="68">
+                </div>
+
+                <hr>
+
+                <div>
+                    <h2>Main screen widgets</h2>
+                    <div style="display:flex;flex-direction:column;gap:8px;margin:6px 0 8px 0">
+                        <div style="display:flex;align-items:center;gap:8px">
+                            <label for="todoAutoReminderMode">Todo auto reminder</label>
+                            <div class="help-tip-wrap">
+                                <button
+                                    id="todoReminderHelp"
+                                    class="btn-secondary"
+                                    type="button"
+                                    aria-label="Todo reminder quick help">?</button>
+                                <div class="help-tooltip" role="tooltip">
+                                    Quick reminder: type time directly in a task, like
+                                    <strong>Drink water at 9:30 PM</strong> or
+                                    <strong>Meeting 10:00</strong>.
+                                    <br>
+                                    The app detects the time and uses your default mode below.
+                                </div>
+                            </div>
+                        </div>
+                        <select id="todoAutoReminderMode">
+                            <option value="ask">Ask me each time</option>
+                            <option value="always">Always keep auto reminder</option>
+                            <option value="never">Never set auto reminder</option>
+                        </select>
+                    </div>
+                    <div id="widgetVisibilityList"></div>
+                </div>
+
+                <div id="imageWidgetSettingsSection" class="hidden" style="margin-top:10px">
+                    <h2>Image widget settings</h2>
+                    <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+                        <input type="file" id="imageWidgetUpload" accept="image/*">
+                        <div style="display:flex;gap:8px;align-items:center">
+                            <input id="imageWidgetUrl" type="url" placeholder="Image URL (https://...)">
+                            <button id="setImageWidgetUrl" class="btn-primary" type="button">Set</button>
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div id="sportsWidgetSettingsSection" style="margin-top:10px">
+                    <h2>CricAPI widget settings</h2>
+                    <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+                        <div style="display:flex;align-items:center;gap:8px">
+                            <label for="sportsWidgetApiKeys">API keys</label>
+                            <button id="sportsApiHelp" class="btn-secondary" type="button" title="How to get CricAPI key" aria-label="How to get CricAPI key">?</button>
+                        </div>
+                        <textarea id="sportsWidgetApiKeys" rows="4" placeholder="Add your CricAPI keys (one key per line)"></textarea>
+                        <input id="sportsWidgetTournament" type="text" placeholder="Tournament keyword (e.g. ICC Men's T20 World Cup)">
+                        <small style="opacity:.75">Source: CricAPI live cricket score feed. If one key hits daily limit, widget auto-tries next key.</small>
+                        <div style="display:flex;justify-content:flex-end">
+                            <button id="saveSportsWidgetSettings" class="btn-primary" type="button">Save CricAPI Settings</button>
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div id="aiChatSettingsSection" style="margin-top:10px">
+                    <h2>AI Chat settings</h2>
+                    <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+                        <input id="aiChatApiKey" type="password" placeholder="OpenRouter API key (sk-or-...)">
+                        <input id="aiChatModel" type="text" placeholder="Model (e.g. openrouter/auto or openai/gpt-4o-mini)">
+                        <small style="opacity:.75">Used by AI Chat widget via OpenRouter Chat Completions API.</small>
+                        <div style="display:flex;justify-content:flex-end">
+                            <button id="saveAiChatSettings" class="btn-primary" type="button">Save AI Chat Settings</button>
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div style="margin-top:10px">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                        <h2>Icon Grid widgets</h2>
+                        <div style="display:flex;align-items:center;gap:8px">
+                            <button id="iconGridOpenModeBtn" class="btn-secondary" type="button">Open: New Tab</button>
+                            <button id="addIconGridWidget" class="btn-secondary" type="button">Add Icon Grid</button>
+                        </div>
+                    </div>
+                    <div id="iconGridWidgetsList" style="margin-top:8px"></div>
+                </div>
+
+                <hr>
+
+                <div>
+                    <h3 class="settings-heading">Background image (upload)</h3>
+                    <div style="display:flex;gap:8px;align-items:center">
+                        <input type="file" id="bgUpload" accept="image/*">
+                        <button id="useUploadedBg" class="btn-primary">Use Uploaded</button>
+                    </div>
+                </div>
+
+                <div style="margin-top:10px">
+                    <h3>Background image (URL)</h3>
+                    <div style="display:flex;gap:8px;align-items:center">
+                        <input id="bgUrl" placeholder="https://..." />
+                        <button id="setBgUrl" class="btn-primary">Set URL</button>
+                    </div>
+                </div>
+
+                <div style="margin-top:10px">
+                    <h3>Built-in wallpapers</h3>
+                    <div id="wallpaperGrid" class="wallpaper-grid"></div>
+                </div>
+
+                <div style="margin-top:10px">
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <h3 style="margin:0">Daily wallpaper (Unsplash)</h3>
+                        <button id="unsplashApiHelp" class="btn-secondary" type="button" title="How to get Unsplash API key" aria-label="How to get Unsplash API key">?</button>
+                    </div>
+                    <label class="toggle-row">
+                        <input type="checkbox" id="bgDailyUnsplash">
+                        <span>Automatically change wallpaper daily</span>
+                    </label>
+                    <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+                        <input id="unsplashApiKey" type="password" placeholder="Unsplash Access Key">
+                        <button id="saveUnsplashSettings" class="btn-primary" type="button">Save Unsplash Settings</button>
+                    </div>
+                    <small style="opacity:.75">
+                        API key is stored only in this browser's local extension storage and is excluded from exported backups.
+                    </small>
+                </div>
+
+                <div style="margin-top:12px">
+                    <button id="clearBg" class="btn-secondary">Clear background</button>
+                </div>
+
+                <hr>
+
+                <div>
+                    <h3>Backup & Restore</h3>
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
+                        <button id="exportSettings" class="btn-secondary" type="button">Export Settings</button>
+                        <input type="file" id="importSettingsFile" accept="application/json">
+                        <button id="importSettings" class="btn-primary" type="button">Import Settings</button>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div>
+                    <h3>Legal</h3>
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
+                        <button id="openPrivacyPolicy" class="btn-secondary" type="button">Privacy Policy</button>
+                        <button id="openTermsConditions" class="btn-secondary" type="button">Terms & Conditions</button>
+                    </div>
+                </div>
+
+
+                <div class="settings-actions" style="margin-top:16px">
+                    <button id="resetPositions" class="btn-secondary">Reset positions</button>
+                    <button id="openBugReport" class="btn-secondary" type="button">Report a Bug</button>
+                    <button id="closeSettings" class="btn-primary">Close</button>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Bug report modal -->
+        <div id="bugReportModal" class="modal hidden">
+            <div class="modal-card bug-report-card">
+                <h3>Report a Bug</h3>
+                <p class="bug-report-note">Describe the issue.</p>
+                <div class="bug-report-row">
+                    <input id="bugReportName" type="text" placeholder="Your name" maxlength="60" required>
+                    <input id="bugReportEmail" type="email" placeholder="Your email" required>
+                </div>
+                <textarea id="bugReportMessage" rows="5" placeholder="What happened? Steps to reproduce?"></textarea>
+                <small class="bug-report-email-note">Reports are sent to workhateem@gmail.com</small>
+                <div class="settings-actions" style="margin-top:12px">
+                    <button id="closeBugReport" class="btn-secondary" type="button">Cancel</button>
+                    <button id="submitBugReport" class="btn-primary" type="button">Submit</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dock editor modal -->
+        <div id="dockEditor" class="modal hidden">
+            <div class="modal-card">
+                <h3>Dock Editor</h3>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                    <span>Open dock links in</span>
+                    <button id="dockOpenModeBtn" class="btn-secondary" type="button">Open: New Tab</button>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                    <input id="dockItemName" placeholder="Icon name (shown on hover)">
+                    <input id="dockItemUrl" placeholder="Redirect URL (e.g. youtube.com or https://...)">
+                    <input id="dockItemIconUrl" placeholder="Icon URL (Will Generate IF not add a Icon URL LINK)">
+                </div>
+                <div style="margin-top:10px; display:flex; gap:8px; justify-content:flex-end">
+                    <button id="addDockItem" class="btn-primary">Add</button>
+                    <button id="cancelDockEdit" class="btn-secondary hidden">Cancel Edit</button>
+                    <button id="closeDockEditor" class="btn-secondary">Close</button>
+                </div>
+                <hr>
+                <div id="dockItemsList"></div>
+            </div>
+        </div>
+
+        <!-- First-run name modal -->
+        <div id="namePromptModal" class="modal hidden">
+            <div class="modal-card name-prompt-card">
+                <h2>Welcome</h2>
+                <p class="name-prompt-text">What should I call you?</p>
+                <input id="namePromptInput" type="text" maxlength="40" placeholder="Your name">
+                <div class="name-prompt-actions">
+                    <button id="namePromptSave" class="btn-primary" type="button">Continue</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>API Setup Help</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0d1527;
+      --card: #16233d;
+      --text: #eef4ff;
+      --muted: #b9c9e6;
+      --accent: #61dafb;
+      --border: #2d4066;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: linear-gradient(180deg, #0b1220 0%, var(--bg) 100%);
+      color: var(--text);
+      padding: 24px;
+    }
+    .card {
+      max-width: 820px;
+      margin: 0 auto;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+    }
+    h1 { margin: 0 0 8px; font-size: 22px; }
+    h2 { margin: 16px 0 8px; font-size: 16px; }
+    p, li { color: var(--muted); line-height: 1.45; }
+    ol, ul { margin: 8px 0 0 18px; padding: 0; }
+    code {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      padding: 2px 6px;
+      color: var(--text);
+    }
+    a { color: var(--accent); }
+    .box {
+      margin-top: 10px;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>How to Get and Set Up API Keys</h1>
+    <p>Use this guide to add your own keys for Sports and Daily Unsplash wallpapers.</p>
+
+    <h2>1. Create account and key</h2>
+    <ol>
+      <li>Go to <a href="https://www.cricapi.com/" target="_blank" rel="noopener noreferrer">cricapi.com</a>.</li>
+      <li>Sign up / log in.</li>
+      <li>Open your dashboard and copy your API key.</li>
+    </ol>
+
+    <h2>2. Add key in extension</h2>
+    <ol>
+      <li>Open New Tab settings.</li>
+      <li>In <code>CricAPI widget settings</code>, paste keys into <code>API keys</code> (one key per line).</li>
+      <li>Click <code>Save CricAPI Settings</code>.</li>
+    </ol>
+
+    <h2>3. Recommended setup</h2>
+    <ul>
+      <li>Add multiple keys to avoid daily limit interruptions.</li>
+      <li>Keep your tournament keyword short for better match detection.</li>
+      <li>Use the widget <code>Refresh</code> button after saving.</li>
+    </ul>
+
+    <div class="box">
+      <strong>Notes</strong>
+      <p>If one key reaches daily limit, the widget automatically tries the next key from your list.</p>
+    </div>
+
+    <h2 style="margin-top:18px">4. Get your own Unsplash Access Key</h2>
+    <ol>
+      <li>Go to <a href="https://unsplash.com/developers" target="_blank" rel="noopener noreferrer">unsplash.com/developers</a>.</li>
+      <li>Sign in, then create a new app.</li>
+      <li>Accept the API terms and copy the <code>Access Key</code>.</li>
+    </ol>
+
+    <h2>5. Add Unsplash key in extension</h2>
+    <ol>
+      <li>Open New Tab settings.</li>
+      <li>Go to <code>Daily wallpaper (Unsplash)</code>.</li>
+      <li>Paste your key in <code>Unsplash Access Key</code>.</li>
+      <li>Enable <code>Automatically change wallpaper daily</code>.</li>
+      <li>Click <code>Save Unsplash Settings</code>.</li>
+    </ol>
+
+    <div class="box">
+      <strong>Privacy</strong>
+      <p>Your Unsplash key is saved only in your local extension storage and is excluded from exported backups.</p>
+    </div>
+  </div>
+</body>
+</html>

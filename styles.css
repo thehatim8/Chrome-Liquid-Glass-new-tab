@@ -1,0 +1,2089 @@
+:root {
+    --bg: #0b1020;
+    --muted: rgba(255, 255, 255, 0.88);
+    --muted-2: rgba(255, 255, 255, 0.72);
+    --muted-3: rgba(255, 255, 255, 0.55);
+    --glass-bg: rgba(255, 255, 255, 0.06);
+    --glass-border: rgba(255, 255, 255, 0.12);
+    --accent: #61dafb;
+    --card-radius: 12px;
+    --shadow-1: 0 8px 30px rgba(2, 6, 23, 0.6);
+    --shadow-2: 0 12px 50px rgba(6, 10, 30, 0.55);
+    --transition-fast: 120ms;
+    --glass-darkness: 68;
+}
+
+/* ---------- Reset & base ---------- */
+* {
+    box-sizing: border-box;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body,
+#app {
+    height: 100%;
+    margin: 0;
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    /* background: linear-gradient(180deg, #071024 0%, #0b1020 100%); */
+    color: var(--muted);
+    -webkit-tap-highlight-color: transparent;
+}
+
+body.custom-bg {
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+}
+
+body.app-booting #workspace,
+body.app-booting #dock {
+    visibility: hidden;
+}
+
+/* ---------- Topbar ---------- */
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 20px;
+    z-index: 10;
+}
+
+.topbar .left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.topbar #greeting {
+    font-weight: 600;
+    font-size: 16px;
+    color: var(--muted);
+}
+
+.icon-btn {
+    background: transparent;
+    border: 0;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+}
+
+.icon-btn:focus {
+    outline: 2px solid rgba(97, 218, 251, 0.18);
+    outline-offset: 2px;
+}
+
+.icon-btn img {
+    width: 20px;
+    height: 20px;
+    color: var(--muted);
+}
+
+/* ---------- Workspace ---------- */
+#workspace {
+    position: relative;
+    height: calc(100% - 120px);
+    padding: 20px 28px 28px 28px;
+    overflow: hidden;
+}
+
+#workspace.grid-show::before {
+    content: "";
+    position: absolute;
+    left: var(--grid-offset-x, 28px);
+    top: var(--grid-offset-y, 28px);
+    width: var(--grid-width, calc(100% - (var(--grid-offset-x, 28px) * 2)));
+    height: var(--grid-height, calc(100% - (var(--grid-offset-y, 28px) * 2)));
+    background-image:
+        linear-gradient(to right, rgba(255, 255, 255, 0.09) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.09) 1px, transparent 1px);
+    background-size: var(--grid-cell-w, 100px) var(--grid-cell-h, 100px),
+        var(--grid-cell-w, 100px) var(--grid-cell-h, 100px);
+    pointer-events: none;
+    opacity: 0.22;
+    z-index: 1;
+}
+
+/* ---------- Grid overlay (drawn by JS; CSS fallback) ---------- */
+.grid-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9998;
+    opacity: 0.12;
+    transition: opacity var(--transition-fast) ease;
+    background-image:
+        linear-gradient(to right, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+    background-size: 100px 100px, 100px 100px;
+    /* JS should override this */
+    display: none;
+}
+
+/* ---------- Widget base ---------- */
+.widget {
+    position: absolute;
+    width: 320px;
+    min-height: 0;
+    border-radius: var(--card-radius);
+    user-select: none;
+    transition: transform var(--transition-fast) ease, box-shadow var(--transition-fast) ease, left var(--transition-fast) ease, top var(--transition-fast) ease;
+    cursor: default;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+    padding: 8px;
+    overflow: hidden;
+    z-index: 5;
+    container-type: size;
+}
+
+/* handle */
+.widget-handle {
+    padding: 8px 10px;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--muted-2);
+    cursor: grab;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+/* hold/dragging states */
+.widget.hold-ready {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 28px rgba(2, 6, 23, 0.45);
+}
+
+.widget.dragging {
+    cursor: grabbing;
+    transform: none;
+    box-shadow: var(--shadow-2);
+    outline: 2px solid rgba(97, 218, 251, 0.06);
+    z-index: 9999;
+}
+
+/* body */
+.widget-body {
+    padding: 8px 10px 14px 10px;
+    display: block;
+    overflow: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+/* ---------- Inputs & Buttons ---------- */
+input,
+button,
+textarea,
+select {
+    font-family: inherit;
+    color: var(--muted);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
+    outline: none;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 8px 10px;
+    font-size: 14px;
+    min-height: 36px;
+    transition: box-shadow var(--transition-fast) ease, border-color var(--transition-fast) ease, background var(--transition-fast) ease;
+}
+
+.dock-right{
+    display: flex;
+    gap: 12px;
+    overflow: visible;
+}
+
+select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image:
+        linear-gradient(45deg, transparent 50%, currentColor 50%),
+        linear-gradient(135deg, currentColor 50%, transparent 50%);
+    background-position:
+        calc(100% - 16px) calc(50% - 2px),
+        calc(100% - 10px) calc(50% - 2px);
+    background-size: 6px 6px, 6px 6px;
+    background-repeat: no-repeat;
+    padding-right: 28px;
+}
+
+/* Keep native dropdown lists readable across all selects. */
+select option {
+    color: #0b1020;
+    background: #ffffff;
+}
+
+input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    min-height: 20px;
+    accent-color: rgb(32, 32, 32);
+    cursor: pointer;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    box-shadow: 0 6px 20px rgba(97, 218, 251, 0.06);
+    border-color: rgba(97, 218, 251, 0.18);
+}
+
+input::placeholder {
+    color: rgba(255, 255, 255, 0.45);
+}
+
+/* small field adjustments */
+#dockItemUrl,
+#bgUrl {
+    width: calc(100% - 80px);
+}
+
+/* primary / secondary buttons */
+.btn-primary {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 0;
+    background: var(--accent);
+    color: #021224;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(97, 218, 251, 0.06);
+}
+
+.btn-primary:active {
+    transform: translateY(1px);
+}
+
+.btn-secondary {
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+}
+
+/* Stronger readability for translucent/transparent button styles. */
+body.glass :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, .del, .search-shortcuts button) {
+    background: rgba(10, 18, 34, 0.42);
+    border-color: rgba(190, 220, 255, 0.24);
+    backdrop-filter: blur(10px) saturate(132%);
+    -webkit-backdrop-filter: blur(10px) saturate(132%);
+}
+
+body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, .del, .search-shortcuts button) {
+    background: rgba(255, 255, 255, 0.66);
+    border-color: rgba(25, 50, 80, 0.2);
+    backdrop-filter: blur(10px) saturate(128%);
+    -webkit-backdrop-filter: blur(10px) saturate(128%);
+}
+
+.help-tip-wrap {
+    position: relative;
+    display: inline-flex;
+}
+
+.help-tooltip {
+    position: absolute;
+    top: calc(100% + 8px);
+    width: min(320px, 72vw);
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(97, 218, 251, 0.26);
+    background: rgba(8, 16, 32, 0.98);
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.35;
+    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.35);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(0);
+    transition: none;
+    pointer-events: none;
+    z-index: 13000;
+}
+
+.help-tip-wrap:hover .help-tooltip,
+.help-tip-wrap:focus-within .help-tooltip {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* ---------- Search widget specifics ---------- */
+#widget-search {
+    overflow: visible;
+}
+
+#widget-search.search-open {
+    z-index: 9000;
+}
+
+#widget-search .widget-body {
+    overflow: visible;
+}
+
+#searchForm {
+    width: 100%;
+}
+
+#searchInput {
+    width: 100%;
+    display: block;
+}
+
+.search-suggestions {
+    margin-top: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    background: rgba(8, 14, 28, 0.95);
+    overflow: auto;
+    max-height: 240px;
+    position: relative;
+    z-index: 20;
+}
+
+.search-suggestion-item {
+    width: 100%;
+    text-align: left;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--muted);
+    padding: 8px 10px;
+    min-height: 34px;
+    cursor: pointer;
+}
+
+.search-suggestion-item:hover,
+.search-suggestion-item.active {
+    background: rgba(97, 218, 251, 0.14);
+}
+
+.search-shortcuts {
+    margin-top: 8px;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.search-shortcuts button {
+    padding: 6px 8px;
+    border-radius: 8px;
+    border: 0;
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.search-shortcuts button:hover {
+    transform: translateY(-2px);
+}
+
+/* ---------- Clock ---------- */
+.clock-digital {
+    font-weight: 700;
+    font-size: 26px;
+    text-align: center;
+    color: var(--muted);
+}
+
+.clock-analog {
+    width: 100%;
+    height: 80px;
+    margin-top: 6px;
+}
+
+/* ---------- Todo ---------- */
+.todo-controls {
+    display: block;
+}
+
+#todoInput {
+    width: 100%;
+}
+
+#widget-todo .widget-body {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+}
+
+#widget-todo .todo-controls {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.todo-list {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0 0 0;
+    overflow: auto;
+    display: block;
+    flex: 1;
+    min-height: 0;
+}
+
+.pointer{
+    cursor: pointer;
+}
+
+.todo-list li {
+    display: flex;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    background: rgba(0, 0, 0, 0.12);
+    color: var(--muted);
+    justify-content: space-between;
+}
+
+.todo-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.todo-edit,
+.todo-remind,
+.del {
+    min-height: 30px;
+    width: 60px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 7px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.todo-edit {
+    width: 34px;
+    min-width: 34px;
+    font-size: 16px;
+}
+
+.todo-edit:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.todo-remind.active {
+    border-color: rgba(97, 218, 251, 0.35);
+    color: var(--accent);
+    box-shadow: 0 0 0 1px rgba(97, 218, 251, 0.12) inset;
+}
+
+.todo-remind:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    border-color: rgba(255, 255, 255, 0.08);
+    color: var(--muted-3);
+    box-shadow: none;
+}
+
+.todo-remind-icon {
+    width: 16px;
+    height: 16px;
+    display: block;
+    filter: brightness(0) invert(0.86) opacity(0.92);
+}
+
+.todo-remind.active .todo-remind-icon {
+    filter: brightness(0) saturate(100%) invert(76%) sepia(39%) saturate(1528%) hue-rotate(154deg) brightness(103%) contrast(98%);
+}
+
+.todo-remind:disabled .todo-remind-icon {
+    filter: brightness(0) invert(0.62) opacity(0.65);
+}
+
+.todo-reminder-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 12000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(4, 8, 18, 0.58);
+}
+
+.todo-reminder-card {
+    width: min(420px, calc(100vw - 32px));
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(11, 19, 35, 0.98);
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.36);
+    padding: 14px;
+    color: var(--muted);
+}
+
+.todo-reminder-title {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+}
+
+.todo-reminder-task,
+.todo-reminder-message {
+    margin: 0 0 10px 0;
+    color: var(--muted-2);
+    word-break: break-word;
+}
+
+.todo-reminder-meta {
+    margin: 0 0 12px 0;
+    color: var(--muted-3);
+    font-size: 13px;
+}
+
+.todo-reminder-input {
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+.todo-reminder-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.todo-reminder-date,
+.todo-reminder-time {
+    width: 100%;
+}
+
+.todo-reminder-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.todo-reminder-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--muted-3);
+}
+
+.todo-reminder-grid select {
+    width: 100%;
+    min-height: 34px;
+}
+
+.todo-reminder-quick {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.todo-reminder-quick .btn-secondary {
+    min-height: 30px;
+    padding: 4px 8px;
+}
+
+.todo-reminder-summary {
+    margin: 0 0 12px 0;
+    color: var(--muted-3);
+    font-size: 13px;
+}
+
+@media (max-width: 700px) {
+    .todo-reminder-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.todo-reminder-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.todo-reminder-alert {
+    border-color: rgba(97, 218, 251, 0.28);
+}
+
+.todo-auto-reminder-card {
+    border-color: rgba(97, 218, 251, 0.35);
+}
+
+.todo-auto-toast {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    z-index: 14000;
+    max-width: min(360px, calc(100vw - 24px));
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(97, 218, 251, 0.3);
+    background: rgba(8, 16, 32, 0.96);
+    color: var(--muted);
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.34);
+    opacity: 0;
+    transform: translateY(6px);
+    pointer-events: none;
+    transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.todo-auto-toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.todo-list li.completed {
+    opacity: 0.6;
+    text-decoration: line-through;
+}
+
+.notes-input {
+    width: 100%;
+    height: 100%;
+    min-height: 120px;
+    resize: none;
+    line-height: 1.4;
+}
+
+#widget-notes .widget-body {
+    height: calc(100% - 42px);
+}
+
+.calendar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.calendar-title {
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.calendar-title-btn {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font-weight: 700;
+    padding: 6px 8px;
+}
+
+.calendar-picker {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.calendar-picker select {
+    min-width: 120px;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 4px;
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.calendar-grid.slide-next {
+    animation: cal-slide-next 180ms ease;
+}
+
+.calendar-grid.slide-prev {
+    animation: cal-slide-prev 180ms ease;
+}
+
+@keyframes cal-slide-next {
+    from {
+        transform: translateX(12px);
+        opacity: 0.7;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes cal-slide-prev {
+    from {
+        transform: translateX(-12px);
+        opacity: 0.7;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.calendar-day-name {
+    font-size: 11px;
+    color: var(--muted-3);
+    text-align: center;
+    padding: 2px 0;
+}
+
+.calendar-cell {
+    border-radius: 7px;
+    text-align: center;
+    font-size: 12px;
+    padding: 6px 0;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.calendar-cell.empty {
+    background: transparent;
+}
+
+.calendar-cell.today {
+    background: rgba(97, 218, 251, 0.2);
+    color: #fff;
+    font-weight: 700;
+}
+
+.day-progress-pct {
+    font-size: 28px;
+    font-weight: 800;
+    margin-bottom: 8px;
+}
+
+.day-progress-track {
+    height: 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+}
+
+.day-progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #61dafb, #87e7ff);
+    transition: width 250ms ease;
+}
+
+.day-progress-meta {
+    margin-top: 8px;
+    color: var(--muted-3);
+    font-size: 12px;
+}
+
+.pomodoro-time {
+    font-size: 34px;
+    font-weight: 800;
+    text-align: center;
+    line-height: 1;
+    margin-top: 4px;
+}
+
+.pomodoro-mode {
+    text-align: center;
+    color: var(--muted-3);
+    margin-top: 8px;
+    margin-bottom: 10px;
+    font-size: 13px;
+    letter-spacing: 0.4px;
+}
+
+.pomodoro-controls {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* ---------- AI Chat widget ---------- */
+.ai-chat-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    height: 100%;
+    overflow: hidden;
+}
+
+.ai-chat-messages {
+    flex: 1;
+    min-height: 90px;
+    overflow: auto;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: rgba(8, 14, 28, 0.45);
+}
+
+#widget-aichat .widget-body {
+    overflow: hidden;
+}
+
+.ai-chat-msg {
+    font-size: 13px;
+    line-height: 1.35;
+    border-radius: 8px;
+    padding: 7px 9px;
+    max-width: 100%;
+    word-break: break-word;
+}
+
+.ai-chat-msg.user {
+    align-self: flex-end;
+    background: rgba(97, 218, 251, 0.18);
+}
+
+.ai-chat-msg.assistant {
+    align-self: flex-start;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.ai-chat-input {
+    flex: 1;
+    width: 100%;
+    min-height: 36px;
+    resize: none;
+}
+
+.ai-chat-compose {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ai-chat-compose #aiChatSend {
+    min-width: 74px;
+}
+
+.ai-chat-messages::-webkit-scrollbar {
+    width: 8px;
+}
+
+.ai-chat-messages::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+}
+
+.ai-chat-messages::-webkit-scrollbar-thumb {
+    background: rgba(97, 218, 251, 0.4);
+    border-radius: 999px;
+}
+
+.ai-chat-messages {
+    scrollbar-color: rgba(97, 218, 251, 0.4) rgba(255, 255, 255, 0.08);
+    scrollbar-width: thin;
+}
+
+/* ---------- Sports widget ---------- */
+.sports-widget-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sports-refresh-btn {
+    min-height: 26px;
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+.sports-competition {
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.sports-status {
+    font-size: 12px;
+    color: var(--muted-2);
+}
+
+.sports-teams {
+    display: grid;
+    gap: 6px;
+}
+
+.sports-team-row {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 6px 8px;
+    font-size: 13px;
+    line-height: 1.2;
+    color: var(--muted);
+}
+
+.sports-meta {
+    font-size: 11px;
+    color: var(--muted-3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ---------- Dock ---------- */
+.dock {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 18px;
+    z-index: 999;
+    pointer-events: all;
+    width: auto;
+    overflow: visible;
+}
+
+.dock-inner {
+    display: flex;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 30px;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.18);
+    backdrop-filter: blur(6px) saturate(120%);
+    box-shadow: 0 12px 40px rgba(2, 6, 23, 0.7);
+    overflow: visible;
+    position: relative;
+    z-index: 1;
+}
+
+.dock-item {
+    border: 0;
+    background: transparent;
+    padding: 5px;
+    cursor: pointer;
+    touch-action: none;
+    user-select: none;
+    transform-origin: bottom center;
+    transition: transform var(--transition-fast) ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: visible;
+}
+
+.dock-item:hover {
+    transform: translateY(-8px) scale(1.22);
+    z-index: 20;
+}
+
+.dock-inner.dock-drag-active .dock-item:not(.dragging):not(.dock-placeholder) {
+    transition: transform 120ms ease;
+    cursor: grab;
+}
+
+.dock-item.dragging {
+    opacity: 0.45;
+    transform: scale(1.15);
+    cursor: grabbing;
+}
+
+#dockOpenModeBtn {
+    min-width: 120px;
+}
+
+.dock-placeholder {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    border: 1px dashed rgba(255, 255, 255, 0.45);
+    background: rgba(255, 255, 255, 0.08);
+    pointer-events: none;
+}
+
+.dock-item::after {
+    content: "";
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    background: rgba(0, 0, 0, 0.82);
+    color: #fff;
+    font-size: 11px;
+    line-height: 1;
+    padding: 5px 8px;
+    border-radius: 8px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 120ms ease, transform 120ms ease;
+    z-index: 50;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(6px) saturate(120%);
+    -webkit-backdrop-filter: blur(6px) saturate(120%);
+}
+
+.dock-item:hover::after {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+}
+
+.dock-hover-tip {
+    position: fixed;
+    left: 0;
+    top: 0;
+    transform: translate(-50%, -100%);
+    margin-top: -10px;
+    padding: 6px 9px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: rgba(8, 14, 28, 0.92);
+    color: #ffffff;
+    font-size: 11px;
+    line-height: 1;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 12000;
+    opacity: 0;
+    transition: opacity 90ms ease;
+    backdrop-filter: blur(6px) saturate(120%);
+    -webkit-backdrop-filter: blur(6px) saturate(120%);
+}
+
+.dock-hover-tip.visible {
+    opacity: 1;
+}
+
+.dock-item-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    object-fit: cover;
+    display: block;
+}
+
+.dock-row-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+}
+
+.dock-separator {
+    width: 2px;
+    height: 36px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.06);
+    margin: 0 6px;
+}
+
+.dock-add-btn {
+    border: 0;
+    background: transparent;
+    padding: 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+}
+
+.dock-add-btn img {
+    width: 20px;
+    height: 20px;
+}
+
+.dock-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    gap: 12px;
+}
+
+.dock-row-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+/* ---------- Modal ---------- */
+.modal {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 9999;
+    overflow-y: auto;
+    padding: 14px;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-card {
+    width: min(860px, calc(100vw - 28px));
+    border-radius: 12px;
+    padding: 18px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 0 14px 50px rgba(2, 6, 23, 0.75);
+    color: var(--muted);
+    max-height: calc(100vh - 28px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.modal-card::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+}
+
+.name-prompt-card {
+    width: min(520px, calc(100vw - 28px));
+    max-height: none;
+    overflow: visible;
+}
+
+.name-prompt-text {
+    margin: 8px 0 12px;
+    color: var(--muted-2);
+}
+
+#namePromptInput {
+    width: 100%;
+}
+
+.name-prompt-actions {
+    margin-top: 12px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.bug-report-card {
+    width: min(620px, calc(100vw - 28px));
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.bug-report-note {
+    margin: 0;
+    color: var(--muted-2);
+}
+
+.bug-report-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.bug-report-card input[type="text"],
+.bug-report-card input[type="email"],
+#bugReportMessage {
+    width: 100%;
+}
+
+#bugReportMessage {
+    resize: vertical;
+    min-height: 120px;
+}
+
+.bug-report-email-note {
+    display: block;
+    margin-top: 0;
+    opacity: 0.8;
+}
+
+@media (max-width: 560px) {
+    .bug-report-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+.toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 8px 0;
+}
+
+#widgetVisibilityList {
+    margin-top: 8px;
+}
+
+#widgetVisibilityList .toggle-row {
+    margin: 6px 0;
+}
+
+.icon-grid-config-card {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 10px;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.icon-grid-config-top {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.icon-grid-config-top .ig-title {
+    flex: 1;
+}
+
+.icon-grid-config-icons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.icon-grid-config-row {
+    display: grid;
+    grid-template-columns: minmax(120px, 1fr) minmax(180px, 1.4fr) minmax(180px, 1.4fr) auto;
+    gap: 6px;
+    align-items: center;
+}
+
+.icon-grid-config-card .ig-add-icon {
+    margin-top: 8px;
+}
+
+.wallpaper-grid {
+    margin-top: 8px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 8px;
+}
+
+.wallpaper-tile {
+    padding: 0;
+    min-height: 64px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.04);
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.wallpaper-tile img {
+    width: 100%;
+    height: 74px;
+    object-fit: cover;
+    display: block;
+}
+
+.wallpaper-tile.active {
+    border-color: rgba(97, 218, 251, 0.75);
+    box-shadow: 0 0 0 2px rgba(97, 218, 251, 0.2);
+}
+
+.icon-grid-body {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+    gap: 8px;
+}
+
+.icon-grid-item {
+    border: 0;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 10px;
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.icon-grid-item-icon {
+    width: 24px;
+    height: 24px;
+    object-fit: cover;
+    border-radius: 6px;
+}
+
+.icon-grid-item-fallback {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--muted);
+}
+
+/* ---------- Image widget ---------- */
+.image-widget-body {
+    display: block;
+    height: 100%;
+    padding: 0;
+    overflow: hidden;
+}
+
+.image-frame {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.image-widget-preview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    -webkit-user-drag: none;
+    user-select: none;
+    pointer-events: none;
+}
+
+.image-widget-empty {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 13px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 6px 10px;
+}
+
+.image-widget-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.image-url-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.image-url-row input {
+    flex: 1;
+}
+
+#widget-image.shape-square .image-frame {
+    aspect-ratio: 1 / 1;
+    inset: 8px;
+}
+
+#widget-image.shape-circle .image-frame {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: calc(100% - 16px);
+    height: calc(100% - 16px);
+    aspect-ratio: 1 / 1;
+    border-radius: 50%;
+    max-width: calc(100% - 16px);
+    max-height: calc(100% - 16px);
+    inset: auto;
+}
+
+#widget-image.shape-circle .image-widget-preview {
+    object-fit: cover;
+    width: 100%;
+    height: 100%;
+}
+
+#widget-image {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+    overflow: hidden;
+}
+
+#widget-image .widget-handle {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 3;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(2px);
+    color: rgba(255, 255, 255, 0.95);
+}
+
+#widget-image .resizer {
+    z-index: 4;
+}
+
+body.glass #widget-image {
+    border: 0;
+    background: transparent;
+    backdrop-filter: none;
+    box-shadow: none;
+}
+
+body.glass #widget-image::before,
+body.glass #widget-image::after {
+    display: none;
+}
+
+/* ---------- Liquid glass polish ---------- */
+body.glass {
+    background: linear-gradient(180deg, #0b1224 0%, #071024 100%);
+}
+
+body.glass .widget {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(200, 225, 255, 0.12);
+    backdrop-filter: blur(8px) saturate(120%);
+    -webkit-backdrop-filter: blur(8px) saturate(120%);
+    box-shadow: 0 10px 28px rgba(6, 10, 30, 0.38);
+    position: relative;
+    overflow: hidden;
+}
+
+body.glass .modal-card {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(200, 225, 255, 0.12);
+    backdrop-filter: blur(8px) saturate(120%);
+    -webkit-backdrop-filter: blur(8px) saturate(120%);
+    position: relative;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+body.glass .dock-inner {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(200, 225, 255, 0.12);
+    backdrop-filter: blur(8px) saturate(120%);
+    -webkit-backdrop-filter: blur(8px) saturate(120%);
+    box-shadow: 0 10px 28px rgba(6, 10, 30, 0.38);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Lightweight liquid sheen (no extra blur/filter passes). */
+body.glass :is(.widget, .modal-card, .dock-inner)::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    background-image:
+      radial-gradient(circle at 16% 14%, rgba(255, 255, 255, 0.14), transparent 40%),
+      linear-gradient(150deg, rgba(125, 183, 255, 0.1), rgba(125, 183, 255, 0.02) 42%, transparent 68%),
+      radial-gradient(rgba(255, 255, 255, 0.035) 0.8px, transparent 0.8px);
+    background-size: auto, auto, 3px 3px;
+    opacity: 0.65;
+    z-index: 0;
+}
+
+/* Modal-specific tuning: cleaner glass while preserving scrollability. */
+body.glass .modal-card::before {
+    opacity: 0.5;
+}
+
+body.glass :is(.widget, .modal-card, .dock-inner) > * {
+    position: relative;
+    z-index: 1;
+}
+
+.glassDarknessRow{
+    display: flex;
+    align-items: center;
+    margin-top: 8px;
+}
+
+body.glass #glassStyle {
+    background-color: rgba(12, 20, 40, 0.7);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: rgba(233, 240, 255, 0.96);
+}
+
+body.glass.glass-light {
+    background: linear-gradient(180deg, #dce6f5 0%, #cdd8eb 100%);
+}
+
+body.glass.glass-light .widget {
+    background: rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.86);
+    box-shadow: 0 8px 22px rgba(28, 42, 66, 0.16);
+}
+
+body.glass.glass-light .widget-handle,
+body.glass.glass-light .clock-digital,
+body.glass.glass-light .calendar-title,
+body.glass.glass-light .topbar #greeting,
+body.glass.glass-light .modal-card,
+body.glass.glass-light .name-prompt-text {
+    color: #1a2738;
+}
+
+body.glass.glass-light .dock-item::after{
+    color: #ffffff;
+    background: rgba(8, 14, 28, 0.92);
+    border-color: rgba(255, 255, 255, 0.24);
+}
+
+body.glass.glass-light .modal-card {
+    background: rgba(255, 255, 255, 0.62);
+    border: 1px solid rgba(255, 255, 255, 0.85);
+}
+
+body.glass.glass-light input,
+body.glass.glass-light textarea,
+body.glass.glass-light select,
+body.glass.glass-light button {
+    color: #1a2738;
+    border-color: rgba(21, 39, 65, 0.12);
+    background-color: rgba(255, 255, 255, 0.58);
+}
+
+body.glass.glass-light select {
+    background-image:
+        linear-gradient(45deg, transparent 50%, #1a2738 50%),
+        linear-gradient(135deg, #1a2738 50%, transparent 50%);
+}
+
+body.glass.glass-light input::placeholder,
+body.glass.glass-light textarea::placeholder {
+    color: rgba(26, 39, 56, 0.65);
+}
+
+body.glass.glass-light .dock-inner {
+    background: rgba(255, 255, 255, 0.54);
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    box-shadow: 0 12px 28px rgba(28, 42, 66, 0.18);
+}
+
+body.glass.glass-light #glassStyle {
+    background-color: rgba(255, 255, 255, 0.78);
+    border-color: rgba(21, 39, 65, 0.2);
+    color: #1a2738;
+}
+
+/* Dark glass intensity control */
+body.glass:not(.glass-light) .widget {
+    background:
+        linear-gradient(
+            180deg,
+            rgba(6, 12, 24, calc((var(--glass-darkness) / 100) * 0.42)),
+            rgba(4, 8, 16, calc((var(--glass-darkness) / 100) * 0.48))
+        ),
+        rgba(255, 255, 255, 0.15);
+    border-color: rgba(120, 155, 210, calc(0.16 - (var(--glass-darkness) / 100) * 0.08));
+}
+
+body.glass:not(.glass-light) .modal-card {
+    background:
+        linear-gradient(
+            180deg,
+            rgba(6, 12, 24, calc((var(--glass-darkness) / 100) * 0.42)),
+            rgba(4, 8, 16, calc((var(--glass-darkness) / 100) * 0.48))
+        ),
+        rgba(255, 255, 255, 0.15);
+    border-color: rgba(120, 155, 210, calc(0.16 - (var(--glass-darkness) / 100) * 0.08));
+}
+
+body.glass:not(.glass-light) .dock-inner {
+    background:
+        linear-gradient(
+            180deg,
+            rgba(6, 12, 24, calc((var(--glass-darkness) / 100) * 0.42)),
+            rgba(4, 8, 16, calc((var(--glass-darkness) / 100) * 0.48))
+        ),
+        rgba(255, 255, 255, 0.15);
+    border-color: rgba(120, 155, 210, calc(0.16 - (var(--glass-darkness) / 100) * 0.08));
+}
+
+body.glass.glass-light #widget-calendar .widget-handle,
+body.glass.glass-light #widget-calendar .calendar-title,
+body.glass.glass-light #widget-calendar .calendar-title-btn,
+body.glass.glass-light #widget-calendar .calendar-grid {
+    color: #1a2738;
+}
+
+body.glass.glass-light #widget-calendar .calendar-day-name {
+    color: rgba(26, 39, 56, 0.62);
+}
+
+body.glass.glass-light #widget-calendar .calendar-cell {
+    color: #1a2738;
+    background: rgba(255, 255, 255, 0.32);
+}
+
+body.glass.glass-light #widget-calendar .calendar-cell.today {
+    color: #10233a;
+    background: rgba(97, 218, 251, 0.32);
+}
+
+/* ---------- Compact widget adaptations ---------- */
+@container (max-width: 240px) {
+    .widget-handle {
+        padding: 6px 8px;
+        font-size: 12px;
+    }
+
+    .widget-body {
+        padding: 6px 8px 10px;
+    }
+
+    input,
+    button,
+    textarea,
+    select {
+        min-height: 30px;
+        padding: 6px 8px;
+        font-size: 12px;
+    }
+
+    .clock-digital {
+        font-size: 22px;
+    }
+
+    .clock-analog {
+        height: 56px;
+    }
+
+    .search-shortcuts {
+        gap: 4px;
+    }
+
+    .search-shortcuts button {
+        font-size: 12px;
+        padding: 4px 6px;
+    }
+
+    .todo-list li {
+        padding: 6px;
+        gap: 6px;
+        margin-bottom: 4px;
+        font-size: 12px;
+    }
+
+    .notes-input {
+        min-height: 0;
+        font-size: 12px;
+    }
+
+    .calendar-header {
+        margin-bottom: 6px;
+        gap: 4px;
+    }
+
+    .calendar-title {
+        font-size: 13px;
+    }
+
+    #widget-calendar #calendarPrev,
+    #widget-calendar #calendarNext {
+        min-width: 28px;
+        width: 28px;
+        height: 28px;
+        min-height: 28px;
+        padding: 0;
+        font-size: 0;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #widget-calendar #calendarPrev::before,
+    #widget-calendar #calendarNext::before {
+        font-size: 16px;
+        font-weight: 700;
+    }
+
+    #widget-calendar #calendarPrev::before {
+        content: "‹";
+    }
+
+    #widget-calendar #calendarNext::before {
+        content: "›";
+    }
+
+    .calendar-cell {
+        font-size: 11px;
+        padding: 4px 0;
+    }
+
+    .calendar-day-name {
+        font-size: 10px;
+    }
+
+    .calendar-picker {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .calendar-picker select {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .day-progress-pct {
+        font-size: 20px;
+        margin-bottom: 6px;
+    }
+
+    .day-progress-meta {
+        margin-top: 6px;
+        font-size: 11px;
+    }
+
+    .pomodoro-time {
+        font-size: 24px;
+    }
+
+    .pomodoro-mode {
+        font-size: 12px;
+        margin-top: 4px;
+        margin-bottom: 8px;
+    }
+
+    .pomodoro-controls {
+        gap: 6px;
+    }
+
+    .sports-competition {
+        font-size: 12px;
+    }
+
+    .sports-status,
+    .sports-team-row {
+        font-size: 11px;
+    }
+
+    .sports-team-row {
+        padding: 5px 6px;
+    }
+
+    .sports-meta {
+        font-size: 10px;
+    }
+}
+
+@container (max-height: 140px) {
+    .widget-handle {
+        padding: 5px 8px;
+        font-size: 11px;
+    }
+
+    .widget-body {
+        padding: 5px 8px 8px;
+    }
+
+    .clock-analog,
+    .search-shortcuts,
+    .day-progress-meta,
+    .pomodoro-mode {
+        display: none;
+    }
+
+    .day-progress-pct {
+        font-size: 18px;
+        margin-bottom: 4px;
+    }
+
+    .pomodoro-time {
+        font-size: 22px;
+        margin-top: 0;
+        margin-bottom: 18px;
+    }
+
+    .pomodoro-controls {
+        gap: 4px;
+    }
+
+    .sports-meta {
+        display: none;
+    }
+}
+
+/* ---------- Solid mode (glass off) ---------- */
+body:not(.glass) .widget {
+    background: #1b2438;
+    border: 1px solid #2b3550;
+    backdrop-filter: none;
+    box-shadow: 0 8px 24px rgba(6, 10, 22, 0.38);
+}
+
+body:not(.glass) .modal-card {
+    background: #1a2436;
+    border: 1px solid #2b3550;
+    backdrop-filter: none;
+    box-shadow: 0 12px 32px rgba(6, 10, 22, 0.5);
+}
+
+body:not(.glass) .dock-inner {
+    background: #182132;
+    border: 1px solid #2b3550;
+    backdrop-filter: none;
+    box-shadow: 0 10px 28px rgba(6, 10, 22, 0.48);
+}
+
+body:not(.glass) input,
+body:not(.glass) textarea,
+body:not(.glass) select,
+body:not(.glass) button {
+    background-color: #222d42;
+    border-color: #33405f;
+}
+
+body:not(.glass) .modal-card .btn-primary {
+    background: #61dafb;
+    border: 1px solid rgba(97, 218, 251, 0.55);
+    color: #071626;
+}
+
+body:not(.glass) .modal-card .btn-secondary {
+    background: #2a364f;
+    border: 1px solid #3b4b6f;
+    color: #e7edf8;
+}
+
+body:not(.glass) .modal-card .btn-primary:hover,
+body:not(.glass) .modal-card .btn-secondary:hover {
+    filter: brightness(1.06);
+}
+
+body:not(.glass) .widget .btn-primary {
+    background: #61dafb;
+    border: 1px solid rgba(97, 218, 251, 0.55);
+    color: #071626;
+}
+
+body:not(.glass) .widget .btn-secondary {
+    background: #2a364f;
+    border: 1px solid #3b4b6f;
+    color: #e7edf8;
+}
+
+/* Keep dragged widgets visually clean and clipped while moving. */
+.widget.dragging {
+    overflow: hidden;
+}
+
+.widget.dragging .widget-body {
+    overflow: hidden !important;
+}
+
+.widget.dragging .search-suggestions,
+.widget.dragging .calendar-picker {
+    display: none !important;
+}
+
+/* ---------- Resizer ---------- */
+.widget .resizer {
+    width: 14px;
+    height: 14px;
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    border-radius: 3px;
+    cursor: nwse-resize;
+    opacity: 0.95;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.widget .resizer::after {
+    content: "";
+    position: absolute;
+    right: 3px;
+    bottom: 3px;
+    width: 8px;
+    height: 8px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+    border-radius: 2px;
+}
+
+/* ---------- Scrollbars inside widgets ---------- */
+.widget-body,
+.todo-list {
+    scrollbar-width: none;
+}
+
+.widget-body::-webkit-scrollbar,
+.todo-list::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+}
+
+.notes-input {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(190, 208, 235, 0.45) rgba(255, 255, 255, 0.06);
+}
+
+.notes-input::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+.notes-input::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 999px;
+}
+
+.notes-input::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(210, 226, 248, 0.52), rgba(165, 188, 220, 0.48));
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+.notes-input::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, rgba(225, 236, 252, 0.7), rgba(176, 200, 228, 0.65));
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+body.glass.glass-light .notes-input {
+    scrollbar-color: rgba(77, 103, 137, 0.6) rgba(26, 39, 56, 0.1);
+}
+
+body.glass.glass-light .notes-input::-webkit-scrollbar-track {
+    background: rgba(26, 39, 56, 0.1);
+}
+
+body.glass.glass-light .notes-input::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(82, 111, 148, 0.65), rgba(57, 83, 118, 0.62));
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+body:not(.glass) .notes-input {
+    scrollbar-color: rgba(132, 158, 201, 0.62) rgba(27, 40, 63, 0.85);
+}
+
+body:not(.glass) .notes-input::-webkit-scrollbar-track {
+    background: rgba(27, 40, 63, 0.85);
+}
+
+body:not(.glass) .notes-input::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(132, 158, 201, 0.7), rgba(99, 125, 170, 0.66));
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+.notes-input::placeholder {
+    color: rgba(232, 241, 255, 0.74);
+}
+
+body.glass.glass-light .notes-input::placeholder {
+    color: rgba(26, 39, 56, 0.68);
+}
+
+body:not(.glass) .notes-input::placeholder {
+    color: rgba(228, 236, 248, 0.72);
+}
+
+/* ---------- Accessibility / focus ---------- */
+button:focus,
+.resizer:focus,
+input:focus {
+    outline: 2px solid rgba(97, 218, 251, 0.14);
+    outline-offset: 2px;
+}
+
+/* ---------- Small / responsive ---------- */
+@media (max-width: 900px) {
+    .widget {
+        width: 280px;
+    }
+
+    .dock-inner {
+        padding: 8px 12px;
+    }
+
+    .modal-card {
+        width: calc(100vw - 20px);
+        margin: 0 12px;
+    }
+
+    .icon-grid-config-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ---------- Utility classes ---------- */
+.hidden {
+    display: none !important;
+}
+
+.center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ---------- Final polish: quick states ---------- */
+.widget.minimized {
+    height: 44px;
+    overflow: hidden;
+}
+
+
+.todo-1st-half{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1 1 150px;
+    min-width: 0;
+}
+
+.todo-1st-half .task-text {
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    line-height: 1.25;
+}
+
+@container (max-width: 260px) {
+    .todo-list li {
+        gap: 6px;
+    }
+
+    .todo-1st-half {
+        flex-basis: 100%;
+    }
+
+    .todo-actions {
+        width: 100%;
+        margin-left: 0;
+        justify-content: flex-end;
+    }
+}
