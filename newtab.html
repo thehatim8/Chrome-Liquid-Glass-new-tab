@@ -22,6 +22,11 @@
             </div>
         </header>
 
+        <div id="editModeBanner" class="edit-mode-banner hidden">
+            <span class="edit-mode-label">Edit Layout</span>
+            <button id="exitEditLayout" class="btn-primary edit-mode-done" type="button">Done</button>
+        </div>
+
         <main id="workspace">
             <!-- Widgets -->
             <div class="widget" id="widget-search" data-widget="search">
@@ -352,6 +357,7 @@
 
                 <div class="settings-actions" style="margin-top:16px">
                     <button id="resetPositions" class="btn-secondary">Reset positions</button>
+                    <button id="enterEditLayout" class="btn-secondary" type="button">Edit Layout</button>
                     <button id="openBugReport" class="btn-secondary" type="button">Report a Bug</button>
                     <button id="closeSettings" class="btn-primary">Close</button>
                 </div>

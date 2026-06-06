@@ -2087,3 +2087,186 @@ input:focus {
         justify-content: flex-end;
     }
 }
+
+/* =====================================================
+   iOS-STYLE EDIT LAYOUT MODE
+   ===================================================== */
+
+/* --- Edit mode banner bar --- */
+.edit-mode-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 24px;
+    background: rgba(8, 16, 36, 0.82);
+    border-bottom: 1px solid rgba(97, 218, 251, 0.22);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    z-index: 10000;
+}
+
+.edit-mode-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.edit-mode-done {
+    font-size: 13px;
+    padding: 6px 18px;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+/* --- Jiggle animation --- */
+@keyframes ios-jiggle {
+    0%   { transform: rotate(-1.2deg) scale(1.01); }
+    25%  { transform: rotate( 1.2deg) scale(1.01); }
+    50%  { transform: rotate(-0.8deg) scale(1.01); }
+    75%  { transform: rotate( 0.8deg) scale(1.01); }
+    100% { transform: rotate(-1.2deg) scale(1.01); }
+}
+
+body.edit-layout-mode .widget:not(.dragging):not(.resizing-active) {
+    animation: ios-jiggle 0.42s ease-in-out infinite;
+    animation-delay: calc(var(--jiggle-offset, 0) * 60ms);
+    cursor: grab;
+}
+
+/* Pause jiggle on hover so user can read widget content */
+body.edit-layout-mode .widget:hover:not(.dragging):not(.resizing-active) {
+    animation-play-state: paused;
+}
+
+/* --- In edit mode: instant drag (no hold timer appearance) --- */
+body.edit-layout-mode .widget-handle {
+    cursor: grab;
+}
+body.edit-layout-mode .widget.dragging .widget-handle {
+    cursor: grabbing;
+}
+
+/* --- Hide resizer handles normally; show ONLY in edit mode --- */
+.widget .resizer {
+    display: none;
+}
+body.edit-layout-mode .widget .resizer {
+    display: flex;
+}
+
+/* --- iOS-style corner resize handles (all 4 corners) --- */
+.widget .resizer {
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    z-index: 1000;
+    background: transparent;
+    touch-action: none;
+}
+
+/* Bottom-right (default / existing) */
+.widget .resizer.resize-se {
+    right: 0;
+    bottom: 0;
+    cursor: nwse-resize;
+}
+.widget .resizer.resize-se::before {
+    content: '';
+    position: absolute;
+    right: 4px;
+    bottom: 4px;
+    width: 10px;
+    height: 10px;
+    border-right: 2.5px solid var(--accent);
+    border-bottom: 2.5px solid var(--accent);
+    border-radius: 0 0 4px 0;
+    opacity: 0.85;
+}
+
+/* Bottom-left */
+.widget .resizer.resize-sw {
+    left: 0;
+    bottom: 0;
+    cursor: nesw-resize;
+}
+.widget .resizer.resize-sw::before {
+    content: '';
+    position: absolute;
+    left: 4px;
+    bottom: 4px;
+    width: 10px;
+    height: 10px;
+    border-left: 2.5px solid var(--accent);
+    border-bottom: 2.5px solid var(--accent);
+    border-radius: 0 0 0 4px;
+    opacity: 0.85;
+}
+
+/* Top-right */
+.widget .resizer.resize-ne {
+    right: 0;
+    top: 0;
+    cursor: nesw-resize;
+}
+.widget .resizer.resize-ne::before {
+    content: '';
+    position: absolute;
+    right: 4px;
+    top: 4px;
+    width: 10px;
+    height: 10px;
+    border-right: 2.5px solid var(--accent);
+    border-top: 2.5px solid var(--accent);
+    border-radius: 0 4px 0 0;
+    opacity: 0.85;
+}
+
+/* Top-left */
+.widget .resizer.resize-nw {
+    left: 0;
+    top: 0;
+    cursor: nwse-resize;
+}
+.widget .resizer.resize-nw::before {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 4px;
+    width: 10px;
+    height: 10px;
+    border-left: 2.5px solid var(--accent);
+    border-top: 2.5px solid var(--accent);
+    border-radius: 4px 0 0 0;
+    opacity: 0.85;
+}
+
+/* While actively resizing, freeze jiggle */
+body.edit-layout-mode .widget.resizing-active {
+    animation: none;
+    cursor: default;
+}
+
+/* Highlight widget border in edit mode */
+body.edit-layout-mode .widget {
+    border-color: rgba(97, 218, 251, 0.12);
+    box-shadow: 0 0 0 1px rgba(97, 218, 251, 0.07);
+    will-change: transform;
+}
+
+/* Dim widget body content in edit mode so handles stand out */
+body.edit-layout-mode .widget-body {
+    pointer-events: none;
+    user-select: none;
+}
+body.edit-layout-mode .widget-handle {
+    pointer-events: auto;
+}
+body.edit-layout-mode .widget .resizer {
+    pointer-events: auto;
+}

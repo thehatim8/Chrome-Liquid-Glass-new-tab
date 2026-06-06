@@ -135,123 +135,154 @@ function findLargestNonOverlapping(item, others, grid) {
   return best;
 }
 
+// direction string → { resizeW, resizeH, anchorRight, anchorBottom }
+// anchorRight:  when true, moving left edge → right stays fixed
+// anchorBottom: when true, moving top edge → bottom stays fixed
+const HANDLE_CONFIG = {
+  'se': { resizeW: true,  resizeH: true,  anchorRight: false, anchorBottom: false },
+  'sw': { resizeW: true,  resizeH: true,  anchorRight: true,  anchorBottom: false },
+  'ne': { resizeW: true,  resizeH: true,  anchorRight: false, anchorBottom: true  },
+  'nw': { resizeW: true,  resizeH: true,  anchorRight: true,  anchorBottom: true  },
+};
+
 export function makeResizable(widgetEl, workspaceEl, id) {
-  let resizer = widgetEl.querySelector('.resizer');
-  if (!resizer) {
-    resizer = document.createElement('div');
-    resizer.className = 'resizer';
+  // Remove any old single resizer if it exists from a previous init
+  widgetEl.querySelectorAll('.resizer').forEach(r => r.remove());
+
+  // Create all 4 corner handles
+  ['se', 'sw', 'ne', 'nw'].forEach(dir => {
+    const resizer = document.createElement('div');
+    resizer.className = `resizer resize-${dir}`;
+    resizer.dataset.dir = dir;
+    resizer.setAttribute('aria-hidden', 'true');
     widgetEl.appendChild(resizer);
-  }
+    attachResizerEvents(resizer, dir);
+  });
 
-  resizer.style.position = 'absolute';
-  resizer.style.width = '14px';
-  resizer.style.height = '14px';
-  resizer.style.right = '8px';
-  resizer.style.bottom = '8px';
-  resizer.style.cursor = 'nwse-resize';
-  resizer.style.zIndex = 999;
-  resizer.style.background = 'transparent';
+  function attachResizerEvents(resizer, dir) {
+    const cfg = HANDLE_CONFIG[dir];
+    let resizing = false;
+    let start = { x: 0, y: 0, w: 0, h: 0, left: 0, top: 0 };
+    let gridNow = null;
 
-  let resizing = false;
-  let start = { x: 0, y: 0, w: 0, h: 0 };
-  let gridNow = null;
+    function onPointerDown(e) {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      // Only allow resize in edit mode
+      if (!document.body.classList.contains('edit-layout-mode')) return;
+      e.preventDefault();
+      e.stopPropagation();
 
-  function onPointerDown(e) {
-    if (e.pointerType === 'mouse' && e.button !== 0) return;
-    e.preventDefault();
-    resizing = true;
-    start.x = e.clientX;
-    start.y = e.clientY;
-    start.w = widgetEl.offsetWidth;
-    start.h = widgetEl.offsetHeight;
-    const layout = getLayoutConfig();
-    gridNow = computeGrid(workspaceEl, layout.gridCols, layout.gridRows);
-    showGridOverlay(workspaceEl, gridNow.cols, gridNow.rows);
+      resizing = true;
+      start.x = e.clientX;
+      start.y = e.clientY;
+      start.w = widgetEl.offsetWidth;
+      start.h = widgetEl.offsetHeight;
+      start.left = parseFloat(widgetEl.style.left || 0);
+      start.top  = parseFloat(widgetEl.style.top  || 0);
 
-    console.debug('resize:start', { id, startW: start.w, startH: start.h, grid: { cw: gridNow.cellW, ch: gridNow.cellH } });
+      const layout = getLayoutConfig();
+      gridNow = computeGrid(workspaceEl, layout.gridCols, layout.gridRows);
+      showGridOverlay(workspaceEl, gridNow.cols, gridNow.rows);
+      widgetEl.classList.add('resizing-active');
 
-    window.addEventListener('pointermove', onPointerMove, { passive: false });
-    window.addEventListener('pointerup', onPointerUp, { once: true });
-  }
-
-  function onPointerMove(e) {
-    if (!resizing) return;
-    e.preventDefault();
-    const dx = e.clientX - start.x;
-    const dy = e.clientY - start.y;
-
-    const minW = gridNow ? minWidgetWidthForGrid(gridNow) : 32;
-    const minH = gridNow ? minWidgetHeightForGrid(gridNow) : 32;
-    let newW = Math.max(minW, Math.round(start.w + dx));
-    let newH = Math.max(minH, Math.round(start.h + dy));
-
-    // enforce max cells
-    if (gridNow) {
-      const maxWpx = Math.round(gridNow.cellW * gridNow.cols - PAD_X);
-      const maxHpx = Math.round(gridNow.cellH * gridNow.rows - PAD_Y);
-      newW = Math.min(newW, maxWpx);
-      newH = Math.min(newH, maxHpx);
+      try { resizer.setPointerCapture(e.pointerId); } catch (_) {}
+      window.addEventListener('pointermove', onPointerMove, { passive: false });
+      window.addEventListener('pointerup', onPointerUp, { once: true });
+      window.addEventListener('pointercancel', onPointerUp, { once: true });
     }
 
-    widgetEl.style.width = newW + 'px';
-    widgetEl.style.height = newH + 'px';
+    function onPointerMove(e) {
+      if (!resizing) return;
+      e.preventDefault();
 
-    const layout = getLayoutConfig();
-    const cells = sizeToCells(newW, newH, gridNow || computeGrid(workspaceEl, layout.gridCols, layout.gridRows));
-    console.debug('resize:move', { id, newW, newH, cells });
-  }
+      const dx = e.clientX - start.x;
+      const dy = e.clientY - start.y;
 
-  async function onPointerUp(e) {
-    void e;
-    resizing = false;
-    window.removeEventListener('pointermove', onPointerMove);
-    hideGridOverlay(workspaceEl);
+      const minW = gridNow ? minWidgetWidthForGrid(gridNow) : 32;
+      const minH = gridNow ? minWidgetHeightForGrid(gridNow) : 32;
+      const maxWpx = gridNow ? Math.round(gridNow.cellW * gridNow.cols - PAD_X) : 9999;
+      const maxHpx = gridNow ? Math.round(gridNow.cellH * gridNow.rows - PAD_Y) : 9999;
 
-    const res = await storage.get(['sizes', 'positions']);
-    const sizes = res.sizes || {};
-    const positions = res.positions || {};
-    const layout = getLayoutConfig();
-    const grid = gridNow || computeGrid(workspaceEl, layout.gridCols, layout.gridRows);
+      let newW = start.w;
+      let newH = start.h;
+      let newLeft = start.left;
+      let newTop  = start.top;
 
-    const left = parseFloat(widgetEl.style.left || 0);
-    const top = parseFloat(widgetEl.style.top || 0);
-    const posCell = posToCell(left, top, grid);
-    const desiredSize = sizeToCells(widgetEl.offsetWidth, widgetEl.offsetHeight, grid);
-    let target = fitWithinGrid({
-      col: posCell.col,
-      row: posCell.row,
-      cw: desiredSize.cw,
-      ch: desiredSize.ch
-    }, grid);
-
-    const others = collectOtherWidgets(id, positions, sizes, grid);
-    let movedWidgets = {};
-
-    if (!canPlace(target, others)) {
-      const pushed = tryPushConflicts(target, others, grid);
-      if (pushed) {
-        movedWidgets = pushed;
+      if (cfg.anchorRight) {
+        // Left edge moves → right stays fixed
+        newW = Math.max(minW, Math.min(maxWpx, start.w - dx));
+        newLeft = start.left + (start.w - newW);
       } else {
-        target = findLargestNonOverlapping(target, others, grid);
+        newW = Math.max(minW, Math.min(maxWpx, start.w + dx));
       }
+
+      if (cfg.anchorBottom) {
+        // Top edge moves → bottom stays fixed
+        newH = Math.max(minH, Math.min(maxHpx, start.h - dy));
+        newTop = start.top + (start.h - newH);
+      } else {
+        newH = Math.max(minH, Math.min(maxHpx, start.h + dy));
+      }
+
+      widgetEl.style.width  = Math.round(newW) + 'px';
+      widgetEl.style.height = Math.round(newH) + 'px';
+      widgetEl.style.left   = Math.round(newLeft) + 'px';
+      widgetEl.style.top    = Math.round(newTop)  + 'px';
     }
 
-    const currentPx = placeWidgetFromCell(widgetEl, target, grid);
-    positions[id] = { col: target.col, row: target.row, x: currentPx.x, y: currentPx.y };
-    sizes[id] = { w: currentPx.w, h: currentPx.h, cw: target.cw, ch: target.ch };
+    async function onPointerUp() {
+      if (!resizing) return;
+      resizing = false;
+      window.removeEventListener('pointermove', onPointerMove);
+      hideGridOverlay(workspaceEl);
+      widgetEl.classList.remove('resizing-active');
 
-    for (const movedId of Object.keys(movedWidgets)) {
-      const movedEl = document.getElementById(movedId);
-      const moved = movedWidgets[movedId];
-      if (!movedEl) continue;
-      const movedPx = placeWidgetFromCell(movedEl, moved, grid);
-      positions[movedId] = { col: moved.col, row: moved.row, x: movedPx.x, y: movedPx.y };
-      sizes[movedId] = { w: movedPx.w, h: movedPx.h, cw: moved.cw, ch: moved.ch };
+      const res = await storage.get(['sizes', 'positions']);
+      const sizes = res.sizes || {};
+      const positions = res.positions || {};
+      const layout = getLayoutConfig();
+      const grid = gridNow || computeGrid(workspaceEl, layout.gridCols, layout.gridRows);
+
+      const left = parseFloat(widgetEl.style.left || 0);
+      const top  = parseFloat(widgetEl.style.top  || 0);
+      const posCell    = posToCell(left, top, grid);
+      const desiredSize = sizeToCells(widgetEl.offsetWidth, widgetEl.offsetHeight, grid);
+
+      let target = fitWithinGrid({
+        col: posCell.col,
+        row: posCell.row,
+        cw: desiredSize.cw,
+        ch: desiredSize.ch
+      }, grid);
+
+      const others = collectOtherWidgets(id, positions, sizes, grid);
+      let movedWidgets = {};
+
+      if (!canPlace(target, others)) {
+        const pushed = tryPushConflicts(target, others, grid);
+        if (pushed) {
+          movedWidgets = pushed;
+        } else {
+          target = findLargestNonOverlapping(target, others, grid);
+        }
+      }
+
+      const currentPx = placeWidgetFromCell(widgetEl, target, grid);
+      positions[id] = { col: target.col, row: target.row, x: currentPx.x, y: currentPx.y };
+      sizes[id] = { w: currentPx.w, h: currentPx.h, cw: target.cw, ch: target.ch };
+
+      for (const movedId of Object.keys(movedWidgets)) {
+        const movedEl = document.getElementById(movedId);
+        const moved = movedWidgets[movedId];
+        if (!movedEl) continue;
+        const movedPx = placeWidgetFromCell(movedEl, moved, grid);
+        positions[movedId] = { col: moved.col, row: moved.row, x: movedPx.x, y: movedPx.y };
+        sizes[movedId] = { w: movedPx.w, h: movedPx.h, cw: moved.cw, ch: moved.ch };
+      }
+
+      await storage.set({ sizes, positions });
     }
 
-    await storage.set({ sizes, positions });
-    console.debug('resize:end', { id, savedSize: sizes[id] });
+    resizer.addEventListener('pointerdown', onPointerDown);
   }
-
-  resizer.addEventListener('pointerdown', onPointerDown);
 }

@@ -6,6 +6,10 @@ import { getLayoutConfig } from './layoutConfig.js';
 const HOLD_MS = 170;
 const MOVE_THRESHOLD = 8;
 
+function isEditMode() {
+  return document.body.classList.contains('edit-layout-mode');
+}
+
 export function makeLongPressDraggable(widgetEl, workspaceEl, id, defaultPos) {
   if ((!widgetEl.style.left || !widgetEl.style.top) && defaultPos) {
     widgetEl.style.left = defaultPos.x + 'px';
@@ -43,10 +47,15 @@ export function makeLongPressDraggable(widgetEl, workspaceEl, id, defaultPos) {
 
   function onPointerDown(e) {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+    // Don't start drag from a resize handle
+    if (e.target instanceof Element && e.target.closest('.resizer')) return;
+
     const target = e.target;
     const isInteractive = target instanceof Element
       && !!target.closest('button,input,textarea,select,a,[data-no-drag]');
     if (isInteractive) return;
+
     e.preventDefault();
     startClient.x = e.clientX;
     startClient.y = e.clientY;
@@ -55,6 +64,14 @@ export function makeLongPressDraggable(widgetEl, workspaceEl, id, defaultPos) {
     pointerOffset.x = startClient.x - rect.left;
     pointerOffset.y = startClient.y - rect.top;
 
+    if (isEditMode()) {
+      // In edit mode: start drag instantly on pointerdown, no hold delay
+      startDrag();
+      try { handle.setPointerCapture(e.pointerId); } catch (_) {}
+      return;
+    }
+
+    // Normal mode: long-press to drag
     widgetEl.classList.add('hold-ready');
 
     function onMoveWhileHolding(ev) {
@@ -67,7 +84,7 @@ export function makeLongPressDraggable(widgetEl, workspaceEl, id, defaultPos) {
 
     function cancelHoldOnce(ev) {
       cancelHold();
-      try { handle.releasePointerCapture(ev.pointerId); } catch (err) {}
+      try { handle.releasePointerCapture(ev.pointerId); } catch (_) {}
     }
 
     function cancelHold() {
@@ -79,12 +96,11 @@ export function makeLongPressDraggable(widgetEl, workspaceEl, id, defaultPos) {
     }
 
     holdTimer = setTimeout(() => startDrag(), HOLD_MS);
-
     handle.addEventListener('pointermove', onMoveWhileHolding);
     handle.addEventListener('pointerup', cancelHoldOnce);
     handle.addEventListener('pointercancel', cancelHoldOnce);
 
-    try { handle.setPointerCapture(e.pointerId); } catch (err) {}
+    try { handle.setPointerCapture(e.pointerId); } catch (_) {}
   }
 
   function startDrag() {
@@ -96,9 +112,6 @@ export function makeLongPressDraggable(widgetEl, workspaceEl, id, defaultPos) {
     const layout = getLayoutConfig();
     gridNow = computeGrid(workspaceEl, layout.gridCols, layout.gridRows);
     showGridOverlay(workspaceEl, layout.gridCols, layout.gridRows);
-
-    console.debug('drag:start', { id, left: widgetEl.style.left, top: widgetEl.style.top,
-      w: widgetEl.offsetWidth, h: widgetEl.offsetHeight, grid: { cols: gridNow.cols, rows: gridNow.rows } });
 
     window.addEventListener('pointermove', onGlobalPointerMove, { passive: false });
     window.addEventListener('pointerup', onGlobalPointerUp, { once: true });
@@ -131,9 +144,6 @@ export function makeLongPressDraggable(widgetEl, workspaceEl, id, defaultPos) {
 
     widgetEl.style.left = x + 'px';
     widgetEl.style.top = y + 'px';
-
-    const approxCell = posToCell(x, y, gridNow);
-    console.debug('drag:move', { id, clientX: e.clientX, clientY: e.clientY, left: x, top: y, approxCell });
   }
 
   async function onGlobalPointerUp(e) {
@@ -142,7 +152,7 @@ export function makeLongPressDraggable(widgetEl, workspaceEl, id, defaultPos) {
 
     if (!dragging) {
       widgetEl.classList.remove('hold-ready');
-      try { handle.releasePointerCapture(e.pointerId); } catch (err) {}
+      try { handle.releasePointerCapture(e.pointerId); } catch (_) {}
       return;
     }
 
@@ -154,8 +164,7 @@ export function makeLongPressDraggable(widgetEl, workspaceEl, id, defaultPos) {
     const target = posToCell(left, top, gridNow);
     const size = sizeToCells(widgetEl.offsetWidth, widgetEl.offsetHeight, gridNow);
 
-    // load existing positions excluding self
-    const res = await storage.get(['positions','sizes']);
+    const res = await storage.get(['positions', 'sizes']);
     const positions = res.positions || {};
     const sizes = res.sizes || {};
     const existing = {};
@@ -175,7 +184,6 @@ export function makeLongPressDraggable(widgetEl, workspaceEl, id, defaultPos) {
       positions[id] = { col: found.col, row: found.row, x: pp.x, y: pp.y };
       sizes[id] = { w: widgetEl.offsetWidth, h: widgetEl.offsetHeight, cw: size.cw, ch: size.ch };
       await storage.set({ positions, sizes });
-      console.debug('drag:end', { id, snappedTo: found, px: pp, size });
     } else {
       const fallback = cellToPos(target.col, target.row, gridNow);
       widgetEl.style.left = fallback.x + 'px';
@@ -183,10 +191,9 @@ export function makeLongPressDraggable(widgetEl, workspaceEl, id, defaultPos) {
       positions[id] = { col: target.col, row: target.row, x: fallback.x, y: fallback.y };
       sizes[id] = { w: widgetEl.offsetWidth, h: widgetEl.offsetHeight, cw: size.cw, ch: size.ch };
       await storage.set({ positions, sizes });
-      console.debug('drag:end', { id, snappedTo: 'fallback', fallback, size });
     }
 
-    try { handle.releasePointerCapture(e.pointerId); } catch (err) {}
+    try { handle.releasePointerCapture(e.pointerId); } catch (_) {}
   }
 
   handle.addEventListener('pointerdown', onPointerDown);

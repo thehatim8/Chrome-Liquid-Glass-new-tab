@@ -682,6 +682,50 @@ export async function initSettings(appState, options = {}) {
 
   close.addEventListener('click', () => modal.classList.add('hidden'));
 
+  // ── Edit Layout mode ──────────────────────────────────────────────────
+  const enterEditLayoutBtn = document.getElementById('enterEditLayout');
+  const exitEditLayoutBtn  = document.getElementById('exitEditLayout');
+  const editModeBanner     = document.getElementById('editModeBanner');
+
+  function enterEditMode() {
+    // Close settings modal first
+    modal.classList.add('hidden');
+
+    // Assign staggered jiggle offsets so widgets don't all move in sync
+    const widgets = Array.from(document.querySelectorAll('.widget:not(.hidden)'));
+    widgets.forEach((w, i) => {
+      w.style.setProperty('--jiggle-offset', String(i % 6));
+    });
+
+    document.body.classList.add('edit-layout-mode');
+    if (editModeBanner) editModeBanner.classList.remove('hidden');
+    if (exitEditLayoutBtn) exitEditLayoutBtn.focus();
+  }
+
+  function exitEditMode() {
+    document.body.classList.remove('edit-layout-mode');
+    if (editModeBanner) editModeBanner.classList.add('hidden');
+    // Clean up jiggle offsets
+    document.querySelectorAll('.widget').forEach(w => {
+      w.style.removeProperty('--jiggle-offset');
+    });
+  }
+
+  if (enterEditLayoutBtn) {
+    enterEditLayoutBtn.addEventListener('click', enterEditMode);
+  }
+  if (exitEditLayoutBtn) {
+    exitEditLayoutBtn.addEventListener('click', exitEditMode);
+  }
+
+  // Also allow Escape to exit edit mode
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && document.body.classList.contains('edit-layout-mode')) {
+      exitEditMode();
+    }
+  });
+  // ─────────────────────────────────────────────────────────────────────
+
   function resetBugReportForm() {
     if (bugReportName) bugReportName.value = '';
     if (bugReportEmail) bugReportEmail.value = '';
