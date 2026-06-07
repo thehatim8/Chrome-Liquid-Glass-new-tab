@@ -2,7 +2,7 @@ import { storage } from './storage.js';
 import { getImageWidgetState, updateImageWidgetState } from './imageWidget.js';
 import { normalizeIconGridWidgets, renderIconGridWidgets } from './iconGrid.js';
 import { computeGrid, posToCell, sizeToCells } from './grid.js';
-import { setResizeOverlaysVisible } from './resize.js';
+import { setResizeOverlaysVisible, updateOverlayForWidget } from './resize.js';
 const WEB3FORMS_ENDPOINT = 'https://api.web3forms.com/submit';
 const WEB3FORMS_ACCESS_KEY = '064c5b74-a292-4d22-9974-aa594882df1d';
 
@@ -375,6 +375,7 @@ export async function initSettings(appState, options = {}) {
         appState.visibleWidgets[id] = input.checked;
         const el = document.getElementById(id);
         if (el) el.classList.toggle('hidden', !input.checked);
+        updateOverlayForWidget(id);
         await storage.set({ visibleWidgets: appState.visibleWidgets });
         updateImageSettingsVisibility();
       });

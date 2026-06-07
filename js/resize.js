@@ -296,8 +296,20 @@ export function syncResizeOverlays() {
 
 // Show/hide all overlays when edit mode toggles
 export function setResizeOverlaysVisible(visible) {
-  for (const ov of Object.values(overlayMap)) {
-    ov.classList.toggle('active', visible);
+  for (const [id, ov] of Object.entries(overlayMap)) {
+    const widgetEl = document.getElementById(id);
+    const isHidden = !widgetEl || widgetEl.classList.contains('hidden');
+    ov.classList.toggle('active', visible && !isHidden);
   }
   if (visible) syncAllOverlays();
+}
+
+// Sync a single overlay's visibility to match its widget's current hidden state
+export function updateOverlayForWidget(id) {
+  const ov = overlayMap[id];
+  if (!ov) return;
+  const widgetEl = document.getElementById(id);
+  const isHidden = !widgetEl || widgetEl.classList.contains('hidden');
+  const editMode = document.body.classList.contains('edit-layout-mode');
+  ov.classList.toggle('active', editMode && !isHidden);
 }
