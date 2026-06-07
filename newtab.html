@@ -194,274 +194,277 @@
 
         <!-- Settings modal -->
         <div id="settings" class="modal hidden">
-            <div class="modal-card">
-                <h1>Settings</h1>
+            <div class="modal-card settings-card">
+                <header class="settings-header">
+                    <h1>Settings</h1>
+                    <button id="closeSettingsX" class="settings-close-x" type="button" title="Close" aria-label="Close settings">✕</button>
+                </header>
 
-                <label class="toggle-row">
-                    <input type="checkbox" id="toggleGlass">
-                    <span>Enable Liquid Glass Theme</span>
-                </label>
+                <div class="settings-body">
+                    <div class="settings-grid">
 
-                <label class="toggle-row">
-                    <input type="checkbox" id="toggleAnalog">
-                    <span>Show analog clock</span>
-                </label>
-
-                <label class="toggle-row">
-                    <input type="checkbox" id="toggleNotesAutoMath">
-                    <span>Notes: auto-calc on "="</span>
-                </label>
-
-                <div style="margin-top:8px">
-                    <label for="settingsUserName">Your name</label>
-                    <div style="display:flex;gap:8px;align-items:center">
-                        <input id="settingsUserName" type="text" maxlength="40" placeholder="Your name">
-                        <button id="saveUserName" class="btn-primary" type="button">Save Name</button>
-                    </div>
-                </div>
-
-                <div style="margin-top:8px">
-                    <label for="glassStyle">Glass style</label>
-                    <select id="glassStyle">
-                        <option value="dark">Dark Glass</option>
-                        <option value="light">Light Glass</option>
-                    </select>
-                </div>
-
-                <div id="glassDarknessRow" class="glassDarknessRow">
-                    <lable style="margin-right: 10px;" for="glassDarkness">Dark glass darkness: <span id="glassDarknessValue">68%</span></lable>
-                    <input id="glassDarkness" type="range" min="0" max="100" step="1" value="68">
-                </div>
-
-                <hr>
-
-                <div>
-                    <h2>Main screen widgets</h2>
-                    <div style="display:flex;flex-direction:column;gap:8px;margin:6px 0 8px 0">
-                        <div style="display:flex;align-items:center;gap:8px">
-                            <label for="todoAutoReminderMode">Todo auto reminder</label>
-                            <div class="help-tip-wrap">
-                                <button
-                                    id="todoReminderHelp"
-                                    class="btn-secondary"
-                                    type="button"
-                                    aria-label="Todo reminder quick help">?</button>
-                                <div class="help-tooltip" role="tooltip">
-                                    Quick reminder: type time directly in a task, like
-                                    <strong>Drink water at 9:30 PM</strong> or
-                                    <strong>Meeting 10:00</strong>.
-                                    <br>
-                                    The app detects the time and uses your default mode below.
+                        <section class="settings-section">
+                            <h2 class="settings-section-title">Appearance</h2>
+                            <div class="settings-fields">
+                                <label class="toggle-row">
+                                    <input type="checkbox" id="toggleGlass">
+                                    <span>Enable Liquid Glass Theme</span>
+                                </label>
+                                <div class="field">
+                                    <label for="glassStyle">Glass style</label>
+                                    <select id="glassStyle">
+                                        <option value="dark">Dark Glass</option>
+                                        <option value="light">Light Glass</option>
+                                    </select>
+                                </div>
+                                <div id="glassDarknessRow" class="glassDarknessRow field">
+                                    <label for="glassDarkness">Dark glass darkness: <span id="glassDarknessValue">68%</span></label>
+                                    <input id="glassDarkness" type="range" min="0" max="100" step="1" value="68">
                                 </div>
                             </div>
-                        </div>
-                        <select id="todoAutoReminderMode">
-                            <option value="ask">Ask me each time</option>
-                            <option value="always">Always keep auto reminder</option>
-                            <option value="never">Never set auto reminder</option>
-                        </select>
+                        </section>
+
+                        <section class="settings-section">
+                            <h2 class="settings-section-title">Profile &amp; Behavior</h2>
+                            <div class="settings-fields">
+                                <div class="field">
+                                    <label for="settingsUserName">Your name</label>
+                                    <div class="field-inline">
+                                        <input id="settingsUserName" type="text" maxlength="40" placeholder="Your name">
+                                        <button id="saveUserName" class="btn-primary" type="button">Save</button>
+                                    </div>
+                                </div>
+                                <label class="toggle-row">
+                                    <input type="checkbox" id="toggleAnalog">
+                                    <span>Show analog clock</span>
+                                </label>
+                                <label class="toggle-row">
+                                    <input type="checkbox" id="toggleNotesAutoMath">
+                                    <span>Notes: auto-calc on "="</span>
+                                </label>
+                                <div class="field">
+                                    <div class="field-label-row">
+                                        <label for="todoAutoReminderMode">Todo auto reminder</label>
+                                        <div class="help-tip-wrap">
+                                            <button id="todoReminderHelp" class="btn-secondary help-btn" type="button" aria-label="Todo reminder quick help">?</button>
+                                            <div class="help-tooltip" role="tooltip">
+                                                Quick reminder: type time directly in a task, like
+                                                <strong>Drink water at 9:30 PM</strong> or
+                                                <strong>Meeting 10:00</strong>.
+                                                <br>
+                                                The app detects the time and uses your default mode below.
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <select id="todoAutoReminderMode">
+                                        <option value="ask">Ask me each time</option>
+                                        <option value="always">Always keep auto reminder</option>
+                                        <option value="never">Never set auto reminder</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="settings-section settings-section--wide">
+                            <h2 class="settings-section-title">Visible widgets</h2>
+                            <div id="widgetVisibilityList" class="widget-visibility-grid"></div>
+                        </section>
+
+                        <section id="imageWidgetSettingsSection" class="settings-section hidden">
+                            <h2 class="settings-section-title">Image widget</h2>
+                            <div class="settings-fields">
+                                <input type="file" id="imageWidgetUpload" accept="image/*">
+                                <div class="field-inline">
+                                    <input id="imageWidgetUrl" type="url" placeholder="Image URL (https://...)">
+                                    <button id="setImageWidgetUrl" class="btn-primary" type="button">Set</button>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section id="sportsWidgetSettingsSection" class="settings-section">
+                            <div class="settings-section-head">
+                                <h2 class="settings-section-title">Cricket (CricAPI)</h2>
+                                <button id="sportsApiHelp" class="btn-secondary help-btn" type="button" title="How to get CricAPI key" aria-label="How to get CricAPI key">?</button>
+                            </div>
+                            <div class="settings-fields">
+                                <textarea id="sportsWidgetApiKeys" rows="3" placeholder="Add your CricAPI keys (one key per line)"></textarea>
+                                <input id="sportsWidgetTournament" type="text" placeholder="Tournament keyword (e.g. ICC Men's T20 World Cup)">
+                                <small>If one key hits its daily limit, the widget auto-tries the next key.</small>
+                                <div class="field-actions">
+                                    <button id="saveSportsWidgetSettings" class="btn-primary" type="button">Save</button>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section id="aiChatSettingsSection" class="settings-section">
+                            <h2 class="settings-section-title">AI Chat</h2>
+                            <div class="settings-fields">
+                                <input id="aiChatApiKey" type="password" placeholder="OpenRouter API key (sk-or-...)">
+                                <input id="aiChatModel" type="text" placeholder="Model (e.g. openrouter/auto)">
+                                <small>Used by the AI Chat widget via OpenRouter.</small>
+                                <div class="field-actions">
+                                    <button id="saveAiChatSettings" class="btn-primary" type="button">Save</button>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section id="pomodoroSettingsSection" class="settings-section">
+                            <h2 class="settings-section-title">Pomodoro</h2>
+                            <div class="settings-fields">
+                                <div class="slider-row">
+                                    <label for="pomodoroFocusMinutes">Focus duration: <span id="pomodoroFocusValue">25 min</span></label>
+                                    <input id="pomodoroFocusMinutes" type="range" min="1" max="120" step="1" value="25">
+                                </div>
+                                <div class="slider-row">
+                                    <label for="pomodoroBreakMinutes">Break duration: <span id="pomodoroBreakValue">5 min</span></label>
+                                    <input id="pomodoroBreakMinutes" type="range" min="1" max="60" step="1" value="5">
+                                </div>
+                                <small>Timer notifications fire even when this tab is closed.</small>
+                            </div>
+                        </section>
+
+                        <section id="weatherSettingsSection" class="settings-section">
+                            <h2 class="settings-section-title">Weather</h2>
+                            <div class="settings-fields">
+                                <input id="weatherApiKey" type="password" placeholder="OpenWeatherMap API key">
+                                <div class="field">
+                                    <label for="weatherUnits">Units</label>
+                                    <select id="weatherUnits">
+                                        <option value="metric">Celsius (°C)</option>
+                                        <option value="imperial">Fahrenheit (°F)</option>
+                                    </select>
+                                </div>
+                                <input id="weatherCityInput" type="text" placeholder="City (blank = auto-detect from IP)">
+                                <small>Free key from openweathermap.org.</small>
+                                <div class="field-actions">
+                                    <button id="saveWeatherSettings" class="btn-primary" type="button">Save</button>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section id="currencySettingsSection" class="settings-section">
+                            <h2 class="settings-section-title">Markets</h2>
+                            <div class="settings-fields">
+                                <div class="field">
+                                    <label for="currencyBase">Base currency</label>
+                                    <input id="currencyBase" type="text" maxlength="5" placeholder="usd">
+                                </div>
+                                <div class="field">
+                                    <label for="currencyCryptoIds">Crypto (CoinGecko IDs, one per line)</label>
+                                    <textarea id="currencyCryptoIds" rows="3" placeholder="bitcoin&#10;ethereum&#10;solana"></textarea>
+                                </div>
+                                <div class="field">
+                                    <label for="currencyFiatCodes">Fiat currencies (codes, one per line)</label>
+                                    <textarea id="currencyFiatCodes" rows="3" placeholder="EUR&#10;GBP&#10;JPY"></textarea>
+                                </div>
+                                <small>Crypto via CoinGecko, fiat via open.er-api.com. Both free, no key.</small>
+                                <div class="field-actions">
+                                    <button id="saveCurrencySettings" class="btn-primary" type="button">Save</button>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="settings-section settings-section--wide">
+                            <div class="settings-section-head">
+                                <h2 class="settings-section-title">Icon Grid widgets</h2>
+                                <div class="settings-section-head-actions">
+                                    <button id="iconGridOpenModeBtn" class="btn-secondary" type="button">Open: New Tab</button>
+                                    <button id="addIconGridWidget" class="btn-secondary" type="button">Add Icon Grid</button>
+                                </div>
+                            </div>
+                            <div id="iconGridWidgetsList"></div>
+                        </section>
+
+                        <section class="settings-section settings-section--wide">
+                            <h2 class="settings-section-title">Background &amp; Wallpaper</h2>
+                            <div class="settings-fields">
+                                <div class="bg-source-grid">
+                                    <div class="field">
+                                        <label for="bgUpload">Upload image</label>
+                                        <div class="field-inline">
+                                            <input type="file" id="bgUpload" accept="image/*">
+                                            <button id="useUploadedBg" class="btn-primary" type="button">Use</button>
+                                        </div>
+                                    </div>
+                                    <div class="field">
+                                        <label for="bgUrl">Image URL</label>
+                                        <div class="field-inline">
+                                            <input id="bgUrl" placeholder="https://..." />
+                                            <button id="setBgUrl" class="btn-primary" type="button">Set</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="field">
+                                    <label>Built-in wallpapers</label>
+                                    <div id="wallpaperGrid" class="wallpaper-grid"></div>
+                                </div>
+
+                                <div class="field bg-unsplash">
+                                    <div class="field-label-row">
+                                        <label>Daily wallpaper (Unsplash)</label>
+                                        <button id="unsplashApiHelp" class="btn-secondary help-btn" type="button" title="How to get Unsplash API key" aria-label="How to get Unsplash API key">?</button>
+                                    </div>
+                                    <label class="toggle-row">
+                                        <input type="checkbox" id="bgDailyUnsplash">
+                                        <span>Automatically change wallpaper daily</span>
+                                    </label>
+                                    <div class="field-inline">
+                                        <label class="inline-label" for="unsplashTheme">Theme</label>
+                                        <select id="unsplashTheme">
+                                            <option value="random">Random</option>
+                                            <option value="nature">Nature</option>
+                                            <option value="city">City</option>
+                                            <option value="abstract">Abstract</option>
+                                            <option value="space">Space</option>
+                                            <option value="minimal">Minimal</option>
+                                            <option value="mountains">Mountains</option>
+                                            <option value="ocean">Ocean</option>
+                                        </select>
+                                    </div>
+                                    <div class="field-inline">
+                                        <input id="unsplashApiKey" type="password" placeholder="Unsplash Access Key">
+                                        <button id="saveUnsplashSettings" class="btn-primary" type="button">Save</button>
+                                    </div>
+                                    <small>API key is stored only in this browser and excluded from exported backups.</small>
+                                </div>
+
+                                <div class="field-actions field-actions--start">
+                                    <button id="clearBg" class="btn-secondary" type="button">Clear background</button>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="settings-section">
+                            <h2 class="settings-section-title">Backup &amp; Restore</h2>
+                            <div class="settings-fields">
+                                <button id="exportSettings" class="btn-secondary" type="button">Export Settings</button>
+                                <div class="field-inline">
+                                    <input type="file" id="importSettingsFile" accept="application/json">
+                                    <button id="importSettings" class="btn-primary" type="button">Import</button>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="settings-section">
+                            <h2 class="settings-section-title">Legal</h2>
+                            <div class="field-inline">
+                                <button id="openPrivacyPolicy" class="btn-secondary" type="button">Privacy Policy</button>
+                                <button id="openTermsConditions" class="btn-secondary" type="button">Terms &amp; Conditions</button>
+                            </div>
+                        </section>
+
                     </div>
-                    <div id="widgetVisibilityList"></div>
                 </div>
 
-                <div id="imageWidgetSettingsSection" class="hidden" style="margin-top:10px">
-                    <h2>Image widget settings</h2>
-                    <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
-                        <input type="file" id="imageWidgetUpload" accept="image/*">
-                        <div style="display:flex;gap:8px;align-items:center">
-                            <input id="imageWidgetUrl" type="url" placeholder="Image URL (https://...)">
-                            <button id="setImageWidgetUrl" class="btn-primary" type="button">Set</button>
-                        </div>
+                <footer class="settings-footer">
+                    <div class="settings-footer-left">
+                        <button id="resetPositions" class="btn-secondary" type="button">Reset positions</button>
+                        <button id="enterEditLayout" class="btn-secondary" type="button">Edit Layout</button>
+                        <button id="openBugReport" class="btn-secondary" type="button">Report a Bug</button>
                     </div>
-                </div>
-
-                <hr>
-
-                <div id="sportsWidgetSettingsSection" style="margin-top:10px">
-                    <h2>CricAPI widget settings</h2>
-                    <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
-                        <div style="display:flex;align-items:center;gap:8px">
-                            <label for="sportsWidgetApiKeys">API keys</label>
-                            <button id="sportsApiHelp" class="btn-secondary" type="button" title="How to get CricAPI key" aria-label="How to get CricAPI key">?</button>
-                        </div>
-                        <textarea id="sportsWidgetApiKeys" rows="4" placeholder="Add your CricAPI keys (one key per line)"></textarea>
-                        <input id="sportsWidgetTournament" type="text" placeholder="Tournament keyword (e.g. ICC Men's T20 World Cup)">
-                        <small style="opacity:.75">Source: CricAPI live cricket score feed. If one key hits daily limit, widget auto-tries next key.</small>
-                        <div style="display:flex;justify-content:flex-end">
-                            <button id="saveSportsWidgetSettings" class="btn-primary" type="button">Save CricAPI Settings</button>
-                        </div>
-                    </div>
-                </div>
-
-                <hr>
-
-                <div id="aiChatSettingsSection" style="margin-top:10px">
-                    <h2>AI Chat settings</h2>
-                    <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
-                        <input id="aiChatApiKey" type="password" placeholder="OpenRouter API key (sk-or-...)">
-                        <input id="aiChatModel" type="text" placeholder="Model (e.g. openrouter/auto or openai/gpt-4o-mini)">
-                        <small style="opacity:.75">Used by AI Chat widget via OpenRouter Chat Completions API.</small>
-                        <div style="display:flex;justify-content:flex-end">
-                            <button id="saveAiChatSettings" class="btn-primary" type="button">Save AI Chat Settings</button>
-                        </div>
-                    </div>
-                </div>
-
-                <hr>
-
-                <div id="pomodoroSettingsSection" style="margin-top:10px">
-                    <h2>Pomodoro settings</h2>
-                    <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">
-                        <div class="slider-row">
-                            <label for="pomodoroFocusMinutes">Focus duration: <span id="pomodoroFocusValue">25 min</span></label>
-                            <input id="pomodoroFocusMinutes" type="range" min="1" max="120" step="1" value="25">
-                        </div>
-                        <div class="slider-row">
-                            <label for="pomodoroBreakMinutes">Break duration: <span id="pomodoroBreakValue">5 min</span></label>
-                            <input id="pomodoroBreakMinutes" type="range" min="1" max="60" step="1" value="5">
-                        </div>
-                        <small style="opacity:.75">Timer notifications fire even when this tab is closed.</small>
-                    </div>
-                </div>
-
-                <hr>
-
-                <div id="weatherSettingsSection" style="margin-top:10px">
-                    <h2>Weather widget settings</h2>
-                    <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
-                        <input id="weatherApiKey" type="password" placeholder="OpenWeatherMap API key">
-                        <div style="display:flex;gap:8px;align-items:center">
-                            <label for="weatherUnits">Units</label>
-                            <select id="weatherUnits">
-                                <option value="metric">Celsius (°C)</option>
-                                <option value="imperial">Fahrenheit (°F)</option>
-                            </select>
-                        </div>
-                        <input id="weatherCityInput" type="text" placeholder="City (leave blank to auto-detect from IP)">
-                        <small style="opacity:.75">Free key from openweathermap.org. City auto-detects from your IP if left empty.</small>
-                        <div style="display:flex;justify-content:flex-end">
-                            <button id="saveWeatherSettings" class="btn-primary" type="button">Save Weather Settings</button>
-                        </div>
-                    </div>
-                </div>
-
-                <hr>
-
-                <div id="currencySettingsSection" style="margin-top:10px">
-                    <h2>Markets widget settings</h2>
-                    <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
-                        <label for="currencyBase">Base currency</label>
-                        <input id="currencyBase" type="text" maxlength="5" placeholder="usd">
-                        <label for="currencyCryptoIds">Crypto (CoinGecko IDs, one per line)</label>
-                        <textarea id="currencyCryptoIds" rows="3" placeholder="bitcoin&#10;ethereum&#10;solana"></textarea>
-                        <label for="currencyFiatCodes">Fiat currencies (codes, one per line)</label>
-                        <textarea id="currencyFiatCodes" rows="3" placeholder="EUR&#10;GBP&#10;JPY"></textarea>
-                        <small style="opacity:.75">Crypto via CoinGecko, fiat via open.er-api.com. Both free, no key needed.</small>
-                        <div style="display:flex;justify-content:flex-end">
-                            <button id="saveCurrencySettings" class="btn-primary" type="button">Save Markets Settings</button>
-                        </div>
-                    </div>
-                </div>
-
-                <hr>
-
-                <div style="margin-top:10px">
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-                        <h2>Icon Grid widgets</h2>
-                        <div style="display:flex;align-items:center;gap:8px">
-                            <button id="iconGridOpenModeBtn" class="btn-secondary" type="button">Open: New Tab</button>
-                            <button id="addIconGridWidget" class="btn-secondary" type="button">Add Icon Grid</button>
-                        </div>
-                    </div>
-                    <div id="iconGridWidgetsList" style="margin-top:8px"></div>
-                </div>
-
-                <hr>
-
-                <div>
-                    <h3 class="settings-heading">Background image (upload)</h3>
-                    <div style="display:flex;gap:8px;align-items:center">
-                        <input type="file" id="bgUpload" accept="image/*">
-                        <button id="useUploadedBg" class="btn-primary">Use Uploaded</button>
-                    </div>
-                </div>
-
-                <div style="margin-top:10px">
-                    <h3>Background image (URL)</h3>
-                    <div style="display:flex;gap:8px;align-items:center">
-                        <input id="bgUrl" placeholder="https://..." />
-                        <button id="setBgUrl" class="btn-primary">Set URL</button>
-                    </div>
-                </div>
-
-                <div style="margin-top:10px">
-                    <h3>Built-in wallpapers</h3>
-                    <div id="wallpaperGrid" class="wallpaper-grid"></div>
-                </div>
-
-                <div style="margin-top:10px">
-                    <div style="display:flex;align-items:center;gap:8px">
-                        <h3 style="margin:0">Daily wallpaper (Unsplash)</h3>
-                        <button id="unsplashApiHelp" class="btn-secondary" type="button" title="How to get Unsplash API key" aria-label="How to get Unsplash API key">?</button>
-                    </div>
-                    <label class="toggle-row">
-                        <input type="checkbox" id="bgDailyUnsplash">
-                        <span>Automatically change wallpaper daily</span>
-                    </label>
-                    <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
-                        <label for="unsplashTheme">Theme</label>
-                        <select id="unsplashTheme">
-                            <option value="random">Random</option>
-                            <option value="nature">Nature</option>
-                            <option value="city">City</option>
-                            <option value="abstract">Abstract</option>
-                            <option value="space">Space</option>
-                            <option value="minimal">Minimal</option>
-                            <option value="mountains">Mountains</option>
-                            <option value="ocean">Ocean</option>
-                        </select>
-                    </div>
-                    <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
-                        <input id="unsplashApiKey" type="password" placeholder="Unsplash Access Key">
-                        <button id="saveUnsplashSettings" class="btn-primary" type="button">Save Unsplash Settings</button>
-                    </div>
-                    <small style="opacity:.75">
-                        API key is stored only in this browser's local extension storage and is excluded from exported backups.
-                    </small>
-                </div>
-
-                <div style="margin-top:12px">
-                    <button id="clearBg" class="btn-secondary">Clear background</button>
-                </div>
-
-                <hr>
-
-                <div>
-                    <h3>Backup & Restore</h3>
-                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
-                        <button id="exportSettings" class="btn-secondary" type="button">Export Settings</button>
-                        <input type="file" id="importSettingsFile" accept="application/json">
-                        <button id="importSettings" class="btn-primary" type="button">Import Settings</button>
-                    </div>
-                </div>
-
-                <hr>
-
-                <div>
-                    <h3>Legal</h3>
-                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
-                        <button id="openPrivacyPolicy" class="btn-secondary" type="button">Privacy Policy</button>
-                        <button id="openTermsConditions" class="btn-secondary" type="button">Terms & Conditions</button>
-                    </div>
-                </div>
-
-
-                <div class="settings-actions" style="margin-top:16px">
-                    <button id="resetPositions" class="btn-secondary">Reset positions</button>
-                    <button id="enterEditLayout" class="btn-secondary" type="button">Edit Layout</button>
-                    <button id="openBugReport" class="btn-secondary" type="button">Report a Bug</button>
-                    <button id="closeSettings" class="btn-primary">Close</button>
-                </div>
+                    <button id="closeSettings" class="btn-primary" type="button">Close</button>
+                </footer>
 
             </div>
         </div>

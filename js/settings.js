@@ -793,6 +793,8 @@ export async function initSettings(appState, options = {}) {
   });
 
   close.addEventListener('click', () => modal.classList.add('hidden'));
+  const closeX = document.getElementById('closeSettingsX');
+  if (closeX) closeX.addEventListener('click', () => modal.classList.add('hidden'));
 
   // ── Edit Layout mode ──────────────────────────────────────────────────
   const enterEditLayoutBtn = document.getElementById('enterEditLayout');

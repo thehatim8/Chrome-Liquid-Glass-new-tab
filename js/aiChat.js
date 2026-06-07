@@ -65,11 +65,14 @@ export function initAIChat(appState) {
   if (!messagesEl || !inputEl || !sendBtn) return;
 
   const history = [];
-  appendMessage(
-    messagesEl,
-    'assistant',
-    'AI chat is ready. Set your OpenRouter API key in Settings > AI Chat settings.'
-  );
+  const hasApiKey = !!(appState?.aiChatSettings?.apiKey || '').trim();
+  if (!hasApiKey) {
+    appendMessage(
+      messagesEl,
+      'assistant',
+      'AI chat is ready. Set your OpenRouter API key in Settings > AI Chat settings.'
+    );
+  }
 
   async function submitMessage() {
     const q = inputEl.value.trim();
