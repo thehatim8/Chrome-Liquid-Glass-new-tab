@@ -154,7 +154,7 @@ body.app-booting #dock {
     font-weight: 700;
     font-size: 13px;
     color: var(--muted-2);
-    cursor: grab;
+    cursor: default;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -1441,9 +1441,6 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
     color: rgba(255, 255, 255, 0.95);
 }
 
-#widget-image .resizer {
-    z-index: 4;
-}
 
 body.glass #widget-image {
     border: 0;
@@ -1904,32 +1901,6 @@ body:not(.glass) .widget .btn-secondary {
     display: none !important;
 }
 
-/* ---------- Resizer ---------- */
-.widget .resizer {
-    width: 14px;
-    height: 14px;
-    position: absolute;
-    right: 8px;
-    bottom: 8px;
-    border-radius: 3px;
-    cursor: nwse-resize;
-    opacity: 0.95;
-    z-index: 999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.widget .resizer::after {
-    content: "";
-    position: absolute;
-    right: 3px;
-    bottom: 3px;
-    width: 8px;
-    height: 8px;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
-    border-radius: 2px;
-}
 
 /* ---------- Scrollbars inside widgets ---------- */
 .widget-body,
@@ -2014,7 +1985,7 @@ body:not(.glass) .notes-input::placeholder {
 
 /* ---------- Accessibility / focus ---------- */
 button:focus,
-.resizer:focus,
+.resize-handle:focus,
 input:focus {
     outline: 2px solid rgba(97, 218, 251, 0.14);
     outline-offset: 2px;
@@ -2088,11 +2059,39 @@ input:focus {
     }
 }
 
+
+/* =====================================================
+   GLOBAL USER-SELECT DISABLE
+   ===================================================== */
+
+/* Disable text selection everywhere on the new tab page */
+html, body, #app {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* Re-enable only where the user is expected to type or read their own content */
+input,
+textarea,
+[contenteditable="true"],
+.notes-input,
+#notesInput,
+#todoInput,
+.todo-item-text[contenteditable],
+#aiChatInput,
+#aiChatMessages,
+#searchInput,
+.ai-chat-messages {
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+
 /* =====================================================
    iOS-STYLE EDIT LAYOUT MODE
    ===================================================== */
 
-/* --- Edit mode banner bar --- */
+/* --- Edit mode banner (fixed top bar) --- */
 .edit-mode-banner {
     position: fixed;
     top: 0;
@@ -2102,171 +2101,140 @@ input:focus {
     align-items: center;
     justify-content: space-between;
     padding: 10px 24px;
-    background: rgba(8, 16, 36, 0.82);
+    background: rgba(8, 16, 36, 0.88);
     border-bottom: 1px solid rgba(97, 218, 251, 0.22);
     backdrop-filter: blur(14px) saturate(140%);
     -webkit-backdrop-filter: blur(14px) saturate(140%);
     z-index: 10000;
 }
-
 .edit-mode-label {
     font-size: 13px;
     font-weight: 600;
     color: var(--accent);
-    letter-spacing: 0.04em;
+    letter-spacing: 0.05em;
     text-transform: uppercase;
 }
-
 .edit-mode-done {
     font-size: 13px;
-    padding: 6px 18px;
+    padding: 6px 20px;
     border-radius: 20px;
     font-weight: 600;
 }
 
 /* --- Jiggle animation --- */
 @keyframes ios-jiggle {
-    0%   { transform: rotate(-1.2deg) scale(1.01); }
-    25%  { transform: rotate( 1.2deg) scale(1.01); }
-    50%  { transform: rotate(-0.8deg) scale(1.01); }
-    75%  { transform: rotate( 0.8deg) scale(1.01); }
-    100% { transform: rotate(-1.2deg) scale(1.01); }
+    0%   { transform: rotate(-1.1deg) scale(1.008); }
+    25%  { transform: rotate( 1.1deg) scale(1.008); }
+    50%  { transform: rotate(-0.7deg) scale(1.008); }
+    75%  { transform: rotate( 0.7deg) scale(1.008); }
+    100% { transform: rotate(-1.1deg) scale(1.008); }
 }
 
 body.edit-layout-mode .widget:not(.dragging):not(.resizing-active) {
-    animation: ios-jiggle 0.42s ease-in-out infinite;
-    animation-delay: calc(var(--jiggle-offset, 0) * 60ms);
-    cursor: grab;
-}
-
-/* Pause jiggle on hover so user can read widget content */
-body.edit-layout-mode .widget:hover:not(.dragging):not(.resizing-active) {
-    animation-play-state: paused;
-}
-
-/* --- In edit mode: instant drag (no hold timer appearance) --- */
-body.edit-layout-mode .widget-handle {
-    cursor: grab;
-}
-body.edit-layout-mode .widget.dragging .widget-handle {
-    cursor: grabbing;
-}
-
-/* --- Hide resizer handles normally; show ONLY in edit mode --- */
-.widget .resizer {
-    display: none;
-}
-body.edit-layout-mode .widget .resizer {
-    display: flex;
-}
-
-/* --- iOS-style corner resize handles (all 4 corners) --- */
-.widget .resizer {
-    position: absolute;
-    width: 22px;
-    height: 22px;
-    z-index: 1000;
-    background: transparent;
-    touch-action: none;
-}
-
-/* Bottom-right (default / existing) */
-.widget .resizer.resize-se {
-    right: 0;
-    bottom: 0;
-    cursor: nwse-resize;
-}
-.widget .resizer.resize-se::before {
-    content: '';
-    position: absolute;
-    right: 4px;
-    bottom: 4px;
-    width: 10px;
-    height: 10px;
-    border-right: 2.5px solid var(--accent);
-    border-bottom: 2.5px solid var(--accent);
-    border-radius: 0 0 4px 0;
-    opacity: 0.85;
-}
-
-/* Bottom-left */
-.widget .resizer.resize-sw {
-    left: 0;
-    bottom: 0;
-    cursor: nesw-resize;
-}
-.widget .resizer.resize-sw::before {
-    content: '';
-    position: absolute;
-    left: 4px;
-    bottom: 4px;
-    width: 10px;
-    height: 10px;
-    border-left: 2.5px solid var(--accent);
-    border-bottom: 2.5px solid var(--accent);
-    border-radius: 0 0 0 4px;
-    opacity: 0.85;
-}
-
-/* Top-right */
-.widget .resizer.resize-ne {
-    right: 0;
-    top: 0;
-    cursor: nesw-resize;
-}
-.widget .resizer.resize-ne::before {
-    content: '';
-    position: absolute;
-    right: 4px;
-    top: 4px;
-    width: 10px;
-    height: 10px;
-    border-right: 2.5px solid var(--accent);
-    border-top: 2.5px solid var(--accent);
-    border-radius: 0 4px 0 0;
-    opacity: 0.85;
-}
-
-/* Top-left */
-.widget .resizer.resize-nw {
-    left: 0;
-    top: 0;
-    cursor: nwse-resize;
-}
-.widget .resizer.resize-nw::before {
-    content: '';
-    position: absolute;
-    left: 4px;
-    top: 4px;
-    width: 10px;
-    height: 10px;
-    border-left: 2.5px solid var(--accent);
-    border-top: 2.5px solid var(--accent);
-    border-radius: 4px 0 0 0;
-    opacity: 0.85;
-}
-
-/* While actively resizing, freeze jiggle */
-body.edit-layout-mode .widget.resizing-active {
-    animation: none;
-    cursor: default;
-}
-
-/* Highlight widget border in edit mode */
-body.edit-layout-mode .widget {
-    border-color: rgba(97, 218, 251, 0.12);
-    box-shadow: 0 0 0 1px rgba(97, 218, 251, 0.07);
+    animation: ios-jiggle 0.4s ease-in-out infinite;
+    animation-delay: calc(var(--jiggle-offset, 0) * 55ms);
     will-change: transform;
 }
+/* Stop ALL jiggle the moment any widget starts moving — exactly like iOS */
+body.edit-layout-mode.widget-moving .widget {
+    animation: none !important;
+}
+/* No jiggle while resizing */
+body.edit-layout-mode .widget.resizing-active {
+    animation: none;
+}
 
-/* Dim widget body content in edit mode so handles stand out */
+/* Subtle highlight in edit mode */
+body.edit-layout-mode .widget {
+    border-color: rgba(97, 218, 251, 0.10);
+    box-shadow: 0 0 0 1px rgba(97, 218, 251, 0.06);
+}
+
+/* Dim widget body so handles stand out; keep handle interactive */
 body.edit-layout-mode .widget-body {
     pointer-events: none;
     user-select: none;
 }
 body.edit-layout-mode .widget-handle {
+    cursor: grab;
     pointer-events: auto;
 }
-body.edit-layout-mode .widget .resizer {
-    pointer-events: auto;
+body.edit-layout-mode .widget.dragging .widget-handle {
+    cursor: grabbing;
+}
+
+
+
+/* =====================================================
+   RESIZE OVERLAY  (lives in #workspace, not in widget)
+   =====================================================
+   Overlay matches widget exactly in position/size.
+   Corner handles are INSET (inside the widget bounds)
+   so they never bleed into neighbouring widgets.
+*/
+.resize-overlay {
+    position: absolute;
+    pointer-events: none;
+    display: none;
+}
+.resize-overlay.active {
+    display: block;
+    pointer-events: none;
+}
+
+/* Corner handles — 28×28 tap target, fully inside widget */
+.resize-handle {
+    position: absolute;
+    width: 28px;
+    height: 28px;
+    pointer-events: all;
+}
+
+/* All 4 handles inset from the corner — never outside widget bounds */
+.resize-handle-nw { top: 0;    left: 0;    cursor: nwse-resize; }
+.resize-handle-ne { top: 0;    right: 0;   cursor: nesw-resize; }
+.resize-handle-sw { bottom: 0; left: 0;    cursor: nesw-resize; }
+.resize-handle-se { bottom: 0; right: 0;   cursor: nwse-resize; }
+
+/* L-shaped bracket visual — drawn fully inside the handle box */
+.resize-handle::before {
+    content: '';
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border-color: var(--accent);
+    border-style: solid;
+    border-width: 0;
+    opacity: 0.85;
+}
+
+.resize-handle-nw::before {
+    top: 5px; left: 5px;
+    border-top-width: 2.5px;
+    border-left-width: 2.5px;
+    border-radius: 3px 0 0 0;
+}
+.resize-handle-ne::before {
+    top: 5px; right: 5px;
+    border-top-width: 2.5px;
+    border-right-width: 2.5px;
+    border-radius: 0 3px 0 0;
+}
+.resize-handle-sw::before {
+    bottom: 5px; left: 5px;
+    border-bottom-width: 2.5px;
+    border-left-width: 2.5px;
+    border-radius: 0 0 0 3px;
+}
+.resize-handle-se::before {
+    bottom: 5px; right: 5px;
+    border-bottom-width: 2.5px;
+    border-right-width: 2.5px;
+    border-radius: 0 0 3px 0;
+}
+
+.resize-handle:hover::before,
+.resize-handle:active::before {
+    opacity: 1;
+    filter: drop-shadow(0 0 4px rgba(97, 218, 251, 0.6));
 }

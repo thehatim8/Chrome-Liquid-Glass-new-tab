@@ -2,7 +2,7 @@ import { storage } from './storage.js';
 import { getImageWidgetState, updateImageWidgetState } from './imageWidget.js';
 import { normalizeIconGridWidgets, renderIconGridWidgets } from './iconGrid.js';
 import { computeGrid, posToCell, sizeToCells } from './grid.js';
-
+import { setResizeOverlaysVisible } from './resize.js';
 const WEB3FORMS_ENDPOINT = 'https://api.web3forms.com/submit';
 const WEB3FORMS_ACCESS_KEY = '064c5b74-a292-4d22-9974-aa594882df1d';
 
@@ -688,27 +688,20 @@ export async function initSettings(appState, options = {}) {
   const editModeBanner     = document.getElementById('editModeBanner');
 
   function enterEditMode() {
-    // Close settings modal first
     modal.classList.add('hidden');
-
-    // Assign staggered jiggle offsets so widgets don't all move in sync
     const widgets = Array.from(document.querySelectorAll('.widget:not(.hidden)'));
-    widgets.forEach((w, i) => {
-      w.style.setProperty('--jiggle-offset', String(i % 6));
-    });
-
+    widgets.forEach((w, i) => w.style.setProperty('--jiggle-offset', String(i % 6)));
     document.body.classList.add('edit-layout-mode');
+    setResizeOverlaysVisible(true);
     if (editModeBanner) editModeBanner.classList.remove('hidden');
     if (exitEditLayoutBtn) exitEditLayoutBtn.focus();
   }
 
   function exitEditMode() {
     document.body.classList.remove('edit-layout-mode');
+    setResizeOverlaysVisible(false);
     if (editModeBanner) editModeBanner.classList.add('hidden');
-    // Clean up jiggle offsets
-    document.querySelectorAll('.widget').forEach(w => {
-      w.style.removeProperty('--jiggle-offset');
-    });
+    document.querySelectorAll('.widget').forEach(w => w.style.removeProperty('--jiggle-offset'));
   }
 
   if (enterEditLayoutBtn) {

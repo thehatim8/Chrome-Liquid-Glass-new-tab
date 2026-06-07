@@ -6,7 +6,7 @@ import { initClock } from './clock.js';
 import { initTodo } from './todo.js';
 import { initDock } from './dock.js';
 import { initSettings } from './settings.js';
-import { makeResizable } from './resize.js';
+import { makeResizable, setResizeOverlaysVisible } from './resize.js';
 import { initImageWidget } from './imageWidget.js';
 import { updatePersistentGrid, computeGrid, posToCell, cellToPos } from './grid.js';
 import { initNotes } from './notes.js';

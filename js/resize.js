@@ -1,4 +1,4 @@
-// js/resize.js
+// js/resize.js  — iOS-style 4-corner resize via workspace overlay handles
 import { storage } from './storage.js';
 import {
   computeGrid,
@@ -14,275 +14,290 @@ import { getLayoutConfig } from './layoutConfig.js';
 const PAD_X = 12;
 const PAD_Y = 12;
 
-function minWidgetCols() {
-  return Math.max(1, getLayoutConfig().minWidgetCols);
-}
+// ─── helpers ──────────────────────────────────────────────────────────────────
 
-function minWidgetRows() {
-  return Math.max(1, getLayoutConfig().minWidgetRows);
-}
-
-function minWidgetWidthForGrid(grid) {
-  return Math.max(32, Math.round(grid.cellW * minWidgetCols() - PAD_X));
-}
-
-function minWidgetHeightForGrid(grid) {
-  return Math.max(32, Math.round(grid.cellH * minWidgetRows() - PAD_Y));
-}
+function minWidgetCols() { return Math.max(1, getLayoutConfig().minWidgetCols); }
+function minWidgetRows() { return Math.max(1, getLayoutConfig().minWidgetRows); }
+function minW(grid)      { return Math.max(32, Math.round(grid.cellW * minWidgetCols() - PAD_X)); }
+function minH(grid)      { return Math.max(32, Math.round(grid.cellH * minWidgetRows() - PAD_Y)); }
 
 function overlaps(a, b) {
-  return (
-    a.col < b.col + b.cw &&
-    a.col + a.cw > b.col &&
-    a.row < b.row + b.ch &&
-    a.row + a.ch > b.row
-  );
+  return a.col < b.col + b.cw && a.col + a.cw > b.col &&
+         a.row < b.row + b.ch && a.row + a.ch > b.row;
 }
-
 function canPlace(item, others) {
-  return !Object.values(others).some(other => overlaps(item, other));
+  return !Object.values(others).some(o => overlaps(item, o));
 }
 
-function normalizeWidgetState(widgetEl, itemId, positions, sizes, grid) {
-  const p = positions[itemId] || {};
-  const s = sizes[itemId] || {};
-  const left = Number.isFinite(p.x) ? p.x : parseFloat(widgetEl.style.left || 0);
-  const top = Number.isFinite(p.y) ? p.y : parseFloat(widgetEl.style.top || 0);
+function normalizeWidget(el, id, positions, sizes, grid) {
+  const p = positions[id] || {}, s = sizes[id] || {};
+  const left = Number.isFinite(p.x) ? p.x : parseFloat(el.style.left || 0);
+  const top  = Number.isFinite(p.y) ? p.y : parseFloat(el.style.top  || 0);
   const cell = (Number.isFinite(p.col) && Number.isFinite(p.row))
-    ? { col: p.col, row: p.row }
-    : posToCell(left, top, grid);
-  const w = Number.isFinite(s.w) ? s.w : widgetEl.offsetWidth;
-  const h = Number.isFinite(s.h) ? s.h : widgetEl.offsetHeight;
-  const cellSize = (Number.isFinite(s.cw) && Number.isFinite(s.ch))
-    ? { cw: s.cw, ch: s.ch }
-    : sizeToCells(w, h, grid);
-  return { col: cell.col, row: cell.row, cw: cellSize.cw, ch: cellSize.ch };
+    ? { col: p.col, row: p.row } : posToCell(left, top, grid);
+  const w  = Number.isFinite(s.w)  ? s.w  : el.offsetWidth;
+  const h  = Number.isFinite(s.h)  ? s.h  : el.offsetHeight;
+  const cs = (Number.isFinite(s.cw) && Number.isFinite(s.ch))
+    ? { cw: s.cw, ch: s.ch } : sizeToCells(w, h, grid);
+  return { col: cell.col, row: cell.row, cw: cs.cw, ch: cs.ch };
 }
 
-function collectOtherWidgets(currentId, positions, sizes, grid) {
+function collectOthers(currentId, positions, sizes, grid) {
   const map = {};
-  Array.from(document.querySelectorAll('.widget')).forEach(el => {
+  document.querySelectorAll('.widget').forEach(el => {
     if (!el.id || el.id === currentId || el.classList.contains('hidden')) return;
-    map[el.id] = normalizeWidgetState(el, el.id, positions, sizes, grid);
+    map[el.id] = normalizeWidget(el, el.id, positions, sizes, grid);
   });
   return map;
 }
 
-function placeWidgetFromCell(el, item, grid) {
-  const px = cellToPos(item.col, item.row, grid);
-  const width = Math.max(minWidgetWidthForGrid(grid), Math.round(item.cw * grid.cellW - PAD_X));
-  const height = Math.max(minWidgetHeightForGrid(grid), Math.round(item.ch * grid.cellH - PAD_Y));
-  el.style.left = px.x + 'px';
-  el.style.top = px.y + 'px';
-  el.style.width = width + 'px';
+function placeFromCell(el, item, grid) {
+  const px  = cellToPos(item.col, item.row, grid);
+  const width  = Math.max(minW(grid), Math.round(item.cw * grid.cellW - PAD_X));
+  const height = Math.max(minH(grid), Math.round(item.ch * grid.cellH - PAD_Y));
+  el.style.left   = px.x + 'px';
+  el.style.top    = px.y + 'px';
+  el.style.width  = width  + 'px';
   el.style.height = height + 'px';
   return { x: px.x, y: px.y, w: width, h: height };
 }
 
-function fitWithinGrid(item, grid) {
-  const minCw = minWidgetCols();
-  const minCh = minWidgetRows();
+function fitGrid(item, grid) {
+  const mc = minWidgetCols(), mr = minWidgetRows();
   return {
     col: Math.max(0, Math.min(item.col, grid.cols - 1)),
     row: Math.max(0, Math.min(item.row, grid.rows - 1)),
-    cw: Math.max(minCw, Math.min(item.cw, grid.cols, grid.cols - item.col)),
-    ch: Math.max(minCh, Math.min(item.ch, grid.rows, grid.rows - item.row))
+    cw:  Math.max(mc, Math.min(item.cw, grid.cols, grid.cols - item.col)),
+    ch:  Math.max(mr, Math.min(item.ch, grid.rows, grid.rows - item.row)),
   };
 }
 
-function tryPushConflicts(target, others, grid) {
-  const moved = {};
-  const layout = { ...others };
-  const conflicts = Object.keys(layout).filter(key => overlaps(target, layout[key]));
+function tryPush(target, others, grid) {
+  const moved = {}, layout = { ...others };
+  const conflicts = Object.keys(layout).filter(k => overlaps(target, layout[k]));
   if (!conflicts.length) return moved;
-
-  for (const conflictId of conflicts) {
-    const conflict = layout[conflictId];
-    const occupancy = { ...layout, __target__: target };
-    delete occupancy[conflictId];
-    const free = findNearestFreeCell(
-      conflict.col,
-      conflict.row,
-      conflict.cw,
-      conflict.ch,
-      occupancy,
-      grid
-    );
+  for (const cid of conflicts) {
+    const c = layout[cid];
+    const occ = { ...layout, __t__: target };
+    delete occ[cid];
+    const free = findNearestFreeCell(c.col, c.row, c.cw, c.ch, occ, grid);
     if (!free) return null;
-    layout[conflictId] = { ...conflict, col: free.col, row: free.row };
-    moved[conflictId] = { ...conflict, col: free.col, row: free.row };
+    layout[cid] = { ...c, col: free.col, row: free.row };
+    moved[cid]  = { ...c, col: free.col, row: free.row };
   }
-
   return moved;
 }
 
-function findLargestNonOverlapping(item, others, grid) {
-  const minCw = minWidgetCols();
-  const minCh = minWidgetRows();
-  let best = fitWithinGrid({ ...item, cw: minCw, ch: minCh }, grid);
-  let bestArea = best.cw * best.ch;
-  for (let cw = item.cw; cw >= minCw; cw--) {
-    for (let ch = item.ch; ch >= minCh; ch--) {
-      const candidate = fitWithinGrid({ ...item, cw, ch }, grid);
-      const area = candidate.cw * candidate.ch;
-      if (area < bestArea) continue;
-      if (canPlace(candidate, others)) {
-        best = candidate;
-        bestArea = area;
-      }
+function findLargestFit(item, others, grid) {
+  const mc = minWidgetCols(), mr = minWidgetRows();
+  let best = fitGrid({ ...item, cw: mc, ch: mr }, grid), bestArea = best.cw * best.ch;
+  for (let cw = item.cw; cw >= mc; cw--) {
+    for (let ch = item.ch; ch >= mr; ch--) {
+      const c = fitGrid({ ...item, cw, ch }, grid);
+      if (c.cw * c.ch >= bestArea && canPlace(c, others)) { best = c; bestArea = c.cw * c.ch; }
     }
   }
   return best;
 }
 
-// direction string → { resizeW, resizeH, anchorRight, anchorBottom }
-// anchorRight:  when true, moving left edge → right stays fixed
-// anchorBottom: when true, moving top edge → bottom stays fixed
-const HANDLE_CONFIG = {
-  'se': { resizeW: true,  resizeH: true,  anchorRight: false, anchorBottom: false },
-  'sw': { resizeW: true,  resizeH: true,  anchorRight: true,  anchorBottom: false },
-  'ne': { resizeW: true,  resizeH: true,  anchorRight: false, anchorBottom: true  },
-  'nw': { resizeW: true,  resizeH: true,  anchorRight: true,  anchorBottom: true  },
+// ─── Save helper (snap + persist widget + any pushed widgets) ─────────────────
+
+async function snapAndSave(widgetEl, workspaceEl, id, grid) {
+  const res = await storage.get(['sizes', 'positions']);
+  const sizes     = res.sizes     || {};
+  const positions = res.positions || {};
+
+  const left  = parseFloat(widgetEl.style.left  || 0);
+  const top   = parseFloat(widgetEl.style.top   || 0);
+  const cell  = posToCell(left, top, grid);
+  const dSize = sizeToCells(widgetEl.offsetWidth, widgetEl.offsetHeight, grid);
+  let target  = fitGrid({ col: cell.col, row: cell.row, cw: dSize.cw, ch: dSize.ch }, grid);
+
+  const others  = collectOthers(id, positions, sizes, grid);
+  let moved = {};
+  if (!canPlace(target, others)) {
+    const pushed = tryPush(target, others, grid);
+    if (pushed) { moved = pushed; }
+    else        { target = findLargestFit(target, others, grid); }
+  }
+
+  const px = placeFromCell(widgetEl, target, grid);
+  positions[id] = { col: target.col, row: target.row, x: px.x, y: px.y };
+  sizes[id]     = { w: px.w, h: px.h, cw: target.cw, ch: target.ch };
+
+  for (const mid of Object.keys(moved)) {
+    const mel = document.getElementById(mid);
+    if (!mel) continue;
+    const mpx = placeFromCell(mel, moved[mid], grid);
+    positions[mid] = { col: moved[mid].col, row: moved[mid].row, x: mpx.x, y: mpx.y };
+    sizes[mid]     = { w: mpx.w, h: mpx.h, cw: moved[mid].cw, ch: moved[mid].ch };
+  }
+  await storage.set({ sizes, positions });
+}
+
+// ─── Overlay handle system ─────────────────────────────────────────────────────
+// One `.resize-overlay` div per widget lives directly in #workspace.
+// It's a transparent full-widget-sized box with 4 corner children.
+// In edit mode it becomes visible and tracks the widget exactly.
+
+const DIRS = ['nw', 'ne', 'sw', 'se'];
+
+// dir → which edges move
+// anchorRight:  true = right edge is fixed, left edge moves   (nw/sw)
+// anchorBottom: true = bottom edge is fixed, top edge moves   (nw/ne)
+const DIR_CFG = {
+  nw: { anchorRight: true,  anchorBottom: true  },
+  ne: { anchorRight: false, anchorBottom: true  },
+  sw: { anchorRight: true,  anchorBottom: false },
+  se: { anchorRight: false, anchorBottom: false },
 };
 
+let overlayMap = {};   // widgetId → overlayEl
+let rafSync = 0;
+
+function syncOverlay(overlayEl, widgetEl) {
+  overlayEl.style.left   = widgetEl.style.left;
+  overlayEl.style.top    = widgetEl.style.top;
+  overlayEl.style.width  = widgetEl.offsetWidth  + 'px';
+  overlayEl.style.height = widgetEl.offsetHeight + 'px';
+  // Keep overlay z-index just above its widget so it never covers other widgets' handles
+  const wz = parseInt(widgetEl.style.zIndex || '5', 10);
+  overlayEl.style.zIndex = (wz + 1) + '';
+}
+
+function syncAllOverlays() {
+  for (const [id, ov] of Object.entries(overlayMap)) {
+    const w = document.getElementById(id);
+    if (w) syncOverlay(ov, w);
+  }
+}
+
+function scheduleSync() {
+  if (rafSync) return;
+  rafSync = requestAnimationFrame(() => { rafSync = 0; syncAllOverlays(); });
+}
+
 export function makeResizable(widgetEl, workspaceEl, id) {
-  // Remove any old single resizer if it exists from a previous init
+  // Remove any old in-widget resizers from previous version
   widgetEl.querySelectorAll('.resizer').forEach(r => r.remove());
 
-  // Create all 4 corner handles
-  ['se', 'sw', 'ne', 'nw'].forEach(dir => {
-    const resizer = document.createElement('div');
-    resizer.className = `resizer resize-${dir}`;
-    resizer.dataset.dir = dir;
-    resizer.setAttribute('aria-hidden', 'true');
-    widgetEl.appendChild(resizer);
-    attachResizerEvents(resizer, dir);
+  // Create the workspace-level overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'resize-overlay';
+  overlay.dataset.for = id;
+  workspaceEl.appendChild(overlay);
+  overlayMap[id] = overlay;
+
+  // Sync overlay position whenever widget moves/resizes
+  syncOverlay(overlay, widgetEl);
+
+  // 4 corner handles inside the overlay
+  DIRS.forEach(dir => {
+    const handle = document.createElement('div');
+    handle.className = `resize-handle resize-handle-${dir}`;
+    handle.dataset.dir = dir;
+    overlay.appendChild(handle);
+    attachHandle(handle, dir, widgetEl, workspaceEl, id, overlay);
   });
+}
 
-  function attachResizerEvents(resizer, dir) {
-    const cfg = HANDLE_CONFIG[dir];
-    let resizing = false;
-    let start = { x: 0, y: 0, w: 0, h: 0, left: 0, top: 0 };
-    let gridNow = null;
+function attachHandle(handle, dir, widgetEl, workspaceEl, id, overlay) {
+  const cfg = DIR_CFG[dir];
+  let active = false;
+  let start = {};
+  let gridNow = null;
 
-    function onPointerDown(e) {
-      if (e.pointerType === 'mouse' && e.button !== 0) return;
-      // Only allow resize in edit mode
-      if (!document.body.classList.contains('edit-layout-mode')) return;
-      e.preventDefault();
-      e.stopPropagation();
+  function onDown(e) {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    // Only in edit mode
+    if (!document.body.classList.contains('edit-layout-mode')) return;
+    e.preventDefault();
+    e.stopPropagation();
 
-      resizing = true;
-      start.x = e.clientX;
-      start.y = e.clientY;
-      start.w = widgetEl.offsetWidth;
-      start.h = widgetEl.offsetHeight;
-      start.left = parseFloat(widgetEl.style.left || 0);
-      start.top  = parseFloat(widgetEl.style.top  || 0);
+    active = true;
+    start = {
+      clientX: e.clientX,
+      clientY: e.clientY,
+      w:    widgetEl.offsetWidth,
+      h:    widgetEl.offsetHeight,
+      left: parseFloat(widgetEl.style.left || 0),
+      top:  parseFloat(widgetEl.style.top  || 0),
+    };
 
-      const layout = getLayoutConfig();
-      gridNow = computeGrid(workspaceEl, layout.gridCols, layout.gridRows);
-      showGridOverlay(workspaceEl, gridNow.cols, gridNow.rows);
-      widgetEl.classList.add('resizing-active');
+    const layout = getLayoutConfig();
+    gridNow = computeGrid(workspaceEl, layout.gridCols, layout.gridRows);
+    showGridOverlay(workspaceEl, gridNow.cols, gridNow.rows);
+    widgetEl.classList.add('resizing-active');
+    overlay.classList.add('resizing-active');
+    document.body.classList.add('widget-moving');
 
-      try { resizer.setPointerCapture(e.pointerId); } catch (_) {}
-      window.addEventListener('pointermove', onPointerMove, { passive: false });
-      window.addEventListener('pointerup', onPointerUp, { once: true });
-      window.addEventListener('pointercancel', onPointerUp, { once: true });
-    }
-
-    function onPointerMove(e) {
-      if (!resizing) return;
-      e.preventDefault();
-
-      const dx = e.clientX - start.x;
-      const dy = e.clientY - start.y;
-
-      const minW = gridNow ? minWidgetWidthForGrid(gridNow) : 32;
-      const minH = gridNow ? minWidgetHeightForGrid(gridNow) : 32;
-      const maxWpx = gridNow ? Math.round(gridNow.cellW * gridNow.cols - PAD_X) : 9999;
-      const maxHpx = gridNow ? Math.round(gridNow.cellH * gridNow.rows - PAD_Y) : 9999;
-
-      let newW = start.w;
-      let newH = start.h;
-      let newLeft = start.left;
-      let newTop  = start.top;
-
-      if (cfg.anchorRight) {
-        // Left edge moves → right stays fixed
-        newW = Math.max(minW, Math.min(maxWpx, start.w - dx));
-        newLeft = start.left + (start.w - newW);
-      } else {
-        newW = Math.max(minW, Math.min(maxWpx, start.w + dx));
-      }
-
-      if (cfg.anchorBottom) {
-        // Top edge moves → bottom stays fixed
-        newH = Math.max(minH, Math.min(maxHpx, start.h - dy));
-        newTop = start.top + (start.h - newH);
-      } else {
-        newH = Math.max(minH, Math.min(maxHpx, start.h + dy));
-      }
-
-      widgetEl.style.width  = Math.round(newW) + 'px';
-      widgetEl.style.height = Math.round(newH) + 'px';
-      widgetEl.style.left   = Math.round(newLeft) + 'px';
-      widgetEl.style.top    = Math.round(newTop)  + 'px';
-    }
-
-    async function onPointerUp() {
-      if (!resizing) return;
-      resizing = false;
-      window.removeEventListener('pointermove', onPointerMove);
-      hideGridOverlay(workspaceEl);
-      widgetEl.classList.remove('resizing-active');
-
-      const res = await storage.get(['sizes', 'positions']);
-      const sizes = res.sizes || {};
-      const positions = res.positions || {};
-      const layout = getLayoutConfig();
-      const grid = gridNow || computeGrid(workspaceEl, layout.gridCols, layout.gridRows);
-
-      const left = parseFloat(widgetEl.style.left || 0);
-      const top  = parseFloat(widgetEl.style.top  || 0);
-      const posCell    = posToCell(left, top, grid);
-      const desiredSize = sizeToCells(widgetEl.offsetWidth, widgetEl.offsetHeight, grid);
-
-      let target = fitWithinGrid({
-        col: posCell.col,
-        row: posCell.row,
-        cw: desiredSize.cw,
-        ch: desiredSize.ch
-      }, grid);
-
-      const others = collectOtherWidgets(id, positions, sizes, grid);
-      let movedWidgets = {};
-
-      if (!canPlace(target, others)) {
-        const pushed = tryPushConflicts(target, others, grid);
-        if (pushed) {
-          movedWidgets = pushed;
-        } else {
-          target = findLargestNonOverlapping(target, others, grid);
-        }
-      }
-
-      const currentPx = placeWidgetFromCell(widgetEl, target, grid);
-      positions[id] = { col: target.col, row: target.row, x: currentPx.x, y: currentPx.y };
-      sizes[id] = { w: currentPx.w, h: currentPx.h, cw: target.cw, ch: target.ch };
-
-      for (const movedId of Object.keys(movedWidgets)) {
-        const movedEl = document.getElementById(movedId);
-        const moved = movedWidgets[movedId];
-        if (!movedEl) continue;
-        const movedPx = placeWidgetFromCell(movedEl, moved, grid);
-        positions[movedId] = { col: moved.col, row: moved.row, x: movedPx.x, y: movedPx.y };
-        sizes[movedId] = { w: movedPx.w, h: movedPx.h, cw: moved.cw, ch: moved.ch };
-      }
-
-      await storage.set({ sizes, positions });
-    }
-
-    resizer.addEventListener('pointerdown', onPointerDown);
+    try { handle.setPointerCapture(e.pointerId); } catch (_) {}
+    window.addEventListener('pointermove', onMove, { passive: false });
+    window.addEventListener('pointerup',   onUp,   { once: true });
+    window.addEventListener('pointercancel', onUp, { once: true });
   }
+
+  function onMove(e) {
+    if (!active) return;
+    e.preventDefault();
+
+    const dx = e.clientX - start.clientX;
+    const dy = e.clientY - start.clientY;
+    const grid = gridNow;
+
+    const minWpx = minW(grid);
+    const minHpx = minH(grid);
+    const maxWpx = Math.round(grid.cellW * grid.cols - PAD_X);
+    const maxHpx = Math.round(grid.cellH * grid.rows - PAD_Y);
+
+    let newW = start.w, newH = start.h, newLeft = start.left, newTop = start.top;
+
+    if (cfg.anchorRight) {
+      newW    = Math.max(minWpx, Math.min(maxWpx, start.w - dx));
+      newLeft = start.left + (start.w - newW);
+    } else {
+      newW = Math.max(minWpx, Math.min(maxWpx, start.w + dx));
+    }
+
+    if (cfg.anchorBottom) {
+      newH   = Math.max(minHpx, Math.min(maxHpx, start.h - dy));
+      newTop = start.top + (start.h - newH);
+    } else {
+      newH = Math.max(minHpx, Math.min(maxHpx, start.h + dy));
+    }
+
+    widgetEl.style.left   = Math.round(newLeft) + 'px';
+    widgetEl.style.top    = Math.round(newTop)  + 'px';
+    widgetEl.style.width  = Math.round(newW)    + 'px';
+    widgetEl.style.height = Math.round(newH)    + 'px';
+
+    syncOverlay(overlay, widgetEl);
+  }
+
+  async function onUp() {
+    if (!active) return;
+    active = false;
+    window.removeEventListener('pointermove', onMove);
+    hideGridOverlay(workspaceEl);
+    widgetEl.classList.remove('resizing-active');
+    overlay.classList.remove('resizing-active');
+    document.body.classList.remove('widget-moving');
+    await snapAndSave(widgetEl, workspaceEl, id, gridNow);
+    syncOverlay(overlay, widgetEl);
+  }
+
+  handle.addEventListener('pointerdown', onDown);
+}
+
+// Call this after widgets are placed/re-laid-out so overlays stay in sync
+export function syncResizeOverlays() {
+  scheduleSync();
+}
+
+// Show/hide all overlays when edit mode toggles
+export function setResizeOverlaysVisible(visible) {
+  for (const ov of Object.values(overlayMap)) {
+    ov.classList.toggle('active', visible);
+  }
+  if (visible) syncAllOverlays();
 }

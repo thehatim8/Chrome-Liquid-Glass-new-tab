@@ -168,5 +168,5 @@ export function updatePersistentGrid(workspaceEl, cols, rows) {
   workspaceEl.style.setProperty('--grid-height', `${grid.height}px`);
   workspaceEl.style.setProperty('--grid-offset-x', `${grid.left - grid.rect.left}px`);
   workspaceEl.style.setProperty('--grid-offset-y', `${grid.top - grid.rect.top}px`);
-  workspaceEl.classList.add('grid-show');
+  // Do NOT add grid-show here — grid lines should only appear during drag/resize
 }
