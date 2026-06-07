@@ -16,10 +16,23 @@ const PAD_Y = 12;
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
-function minWidgetCols() { return Math.max(1, getLayoutConfig().minWidgetCols); }
-function minWidgetRows() { return Math.max(1, getLayoutConfig().minWidgetRows); }
-function minW(grid)      { return Math.max(32, Math.round(grid.cellW * minWidgetCols() - PAD_X)); }
-function minH(grid)      { return Math.max(32, Math.round(grid.cellH * minWidgetRows() - PAD_Y)); }
+// Per-widget minimum cell sizes (override the global layout minimum).
+const WIDGET_MIN_OVERRIDES = {
+  'widget-aichat': { cols: 3, rows: 3 }
+};
+
+function minWidgetCols(id) {
+  const base = Math.max(1, getLayoutConfig().minWidgetCols);
+  const o = id && WIDGET_MIN_OVERRIDES[id];
+  return o ? Math.max(base, o.cols) : base;
+}
+function minWidgetRows(id) {
+  const base = Math.max(1, getLayoutConfig().minWidgetRows);
+  const o = id && WIDGET_MIN_OVERRIDES[id];
+  return o ? Math.max(base, o.rows) : base;
+}
+function minW(grid, id) { return Math.max(32, Math.round(grid.cellW * minWidgetCols(id) - PAD_X)); }
+function minH(grid, id) { return Math.max(32, Math.round(grid.cellH * minWidgetRows(id) - PAD_Y)); }
 
 function overlaps(a, b) {
   return a.col < b.col + b.cw && a.col + a.cw > b.col &&
@@ -51,10 +64,10 @@ function collectOthers(currentId, positions, sizes, grid) {
   return map;
 }
 
-function placeFromCell(el, item, grid) {
+function placeFromCell(el, item, grid, id) {
   const px  = cellToPos(item.col, item.row, grid);
-  const width  = Math.max(minW(grid), Math.round(item.cw * grid.cellW - PAD_X));
-  const height = Math.max(minH(grid), Math.round(item.ch * grid.cellH - PAD_Y));
+  const width  = Math.max(minW(grid, id), Math.round(item.cw * grid.cellW - PAD_X));
+  const height = Math.max(minH(grid, id), Math.round(item.ch * grid.cellH - PAD_Y));
   el.style.left   = px.x + 'px';
   el.style.top    = px.y + 'px';
   el.style.width  = width  + 'px';
@@ -62,8 +75,8 @@ function placeFromCell(el, item, grid) {
   return { x: px.x, y: px.y, w: width, h: height };
 }
 
-function fitGrid(item, grid) {
-  const mc = minWidgetCols(), mr = minWidgetRows();
+function fitGrid(item, grid, id) {
+  const mc = minWidgetCols(id), mr = minWidgetRows(id);
   return {
     col: Math.max(0, Math.min(item.col, grid.cols - 1)),
     row: Math.max(0, Math.min(item.row, grid.rows - 1)),
@@ -88,12 +101,12 @@ function tryPush(target, others, grid) {
   return moved;
 }
 
-function findLargestFit(item, others, grid) {
-  const mc = minWidgetCols(), mr = minWidgetRows();
-  let best = fitGrid({ ...item, cw: mc, ch: mr }, grid), bestArea = best.cw * best.ch;
+function findLargestFit(item, others, grid, id) {
+  const mc = minWidgetCols(id), mr = minWidgetRows(id);
+  let best = fitGrid({ ...item, cw: mc, ch: mr }, grid, id), bestArea = best.cw * best.ch;
   for (let cw = item.cw; cw >= mc; cw--) {
     for (let ch = item.ch; ch >= mr; ch--) {
-      const c = fitGrid({ ...item, cw, ch }, grid);
+      const c = fitGrid({ ...item, cw, ch }, grid, id);
       if (c.cw * c.ch >= bestArea && canPlace(c, others)) { best = c; bestArea = c.cw * c.ch; }
     }
   }
@@ -111,24 +124,24 @@ async function snapAndSave(widgetEl, workspaceEl, id, grid) {
   const top   = parseFloat(widgetEl.style.top   || 0);
   const cell  = posToCell(left, top, grid);
   const dSize = sizeToCells(widgetEl.offsetWidth, widgetEl.offsetHeight, grid);
-  let target  = fitGrid({ col: cell.col, row: cell.row, cw: dSize.cw, ch: dSize.ch }, grid);
+  let target  = fitGrid({ col: cell.col, row: cell.row, cw: dSize.cw, ch: dSize.ch }, grid, id);
 
   const others  = collectOthers(id, positions, sizes, grid);
   let moved = {};
   if (!canPlace(target, others)) {
     const pushed = tryPush(target, others, grid);
     if (pushed) { moved = pushed; }
-    else        { target = findLargestFit(target, others, grid); }
+    else        { target = findLargestFit(target, others, grid, id); }
   }
 
-  const px = placeFromCell(widgetEl, target, grid);
+  const px = placeFromCell(widgetEl, target, grid, id);
   positions[id] = { col: target.col, row: target.row, x: px.x, y: px.y };
   sizes[id]     = { w: px.w, h: px.h, cw: target.cw, ch: target.ch };
 
   for (const mid of Object.keys(moved)) {
     const mel = document.getElementById(mid);
     if (!mel) continue;
-    const mpx = placeFromCell(mel, moved[mid], grid);
+    const mpx = placeFromCell(mel, moved[mid], grid, mid);
     positions[mid] = { col: moved[mid].col, row: moved[mid].row, x: mpx.x, y: mpx.y };
     sizes[mid]     = { w: mpx.w, h: mpx.h, cw: moved[mid].cw, ch: moved[mid].ch };
   }
@@ -245,8 +258,8 @@ function attachHandle(handle, dir, widgetEl, workspaceEl, id, overlay) {
     const dy = e.clientY - start.clientY;
     const grid = gridNow;
 
-    const minCols = minWidgetCols();
-    const minRows = minWidgetRows();
+    const minCols = minWidgetCols(id);
+    const minRows = minWidgetRows(id);
     const cellW = grid.cellW;
     const cellH = grid.cellH;
 

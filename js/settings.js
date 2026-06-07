@@ -142,6 +142,8 @@ export async function initSettings(appState, options = {}) {
   const settingsUserName = document.getElementById('settingsUserName');
   const saveUserName = document.getElementById('saveUserName');
   const glassStyle = document.getElementById('glassStyle');
+  const accentTheme = document.getElementById('accentTheme');
+  const accentSwatches = document.getElementById('accentSwatches');
   const glassDarknessRow = document.getElementById('glassDarknessRow');
   const glassDarkness = document.getElementById('glassDarkness');
   const glassDarknessValue = document.getElementById('glassDarknessValue');
@@ -229,9 +231,24 @@ export async function initSettings(appState, options = {}) {
     if (glassDarknessRow) glassDarknessRow.classList.toggle('hidden', !showDarknessSlider);
   }
 
+  const ACCENT_THEMES = [
+    'aqua', 'aurora', 'sunset', 'neon', 'emerald',
+    'rose', 'gold', 'violet', 'ocean', 'mono'
+  ];
+
   function applySettingsLocally() {
     document.body.classList.toggle('glass', !!appState.settings.glass);
     document.body.classList.toggle('glass-light', appState.settings.glassStyle === 'light');
+    const accent = ACCENT_THEMES.includes(appState.settings.accentTheme)
+      ? appState.settings.accentTheme
+      : 'aqua';
+    appState.settings.accentTheme = accent;
+    document.body.dataset.accent = accent;
+    if (accentSwatches) {
+      accentSwatches.querySelectorAll('.accent-swatch').forEach((sw) => {
+        sw.classList.toggle('active', sw.dataset.accent === accent);
+      });
+    }
     applyGlassDarknessLocally();
     const settingsIconImg = document.querySelector('#openSettings img');
     if (settingsIconImg) {
@@ -914,6 +931,25 @@ export async function initSettings(appState, options = {}) {
   appState.settings.glassStyle = appState.settings.glassStyle || 'dark';
   appState.settings.glassDarkness = clampGlassDarkness(appState.settings.glassDarkness);
   if (glassStyle) glassStyle.value = appState.settings.glassStyle;
+  if (!ACCENT_THEMES.includes(appState.settings.accentTheme)) appState.settings.accentTheme = 'aqua';
+  if (accentTheme) accentTheme.value = appState.settings.accentTheme;
+  if (accentSwatches && !accentSwatches.childElementCount) {
+    ACCENT_THEMES.forEach((name) => {
+      const sw = document.createElement('button');
+      sw.type = 'button';
+      sw.className = 'accent-swatch';
+      sw.dataset.accent = name;
+      sw.title = name.charAt(0).toUpperCase() + name.slice(1);
+      sw.setAttribute('aria-label', sw.title);
+      sw.addEventListener('click', async () => {
+        appState.settings.accentTheme = name;
+        if (accentTheme) accentTheme.value = name;
+        applySettingsLocally();
+        await storage.set({ settings: appState.settings });
+      });
+      accentSwatches.appendChild(sw);
+    });
+  }
   if (glassDarkness) glassDarkness.value = String(appState.settings.glassDarkness);
   if (glassDarknessValue) glassDarknessValue.textContent = `${appState.settings.glassDarkness}%`;
 
@@ -980,6 +1016,14 @@ export async function initSettings(appState, options = {}) {
       appState.settings.glassStyle = e.target.value === 'light' ? 'light' : 'dark';
       await storage.set({ settings: appState.settings });
       applySettingsLocally();
+    });
+  }
+
+  if (accentTheme) {
+    accentTheme.addEventListener('change', async (e) => {
+      appState.settings.accentTheme = ACCENT_THEMES.includes(e.target.value) ? e.target.value : 'aqua';
+      applySettingsLocally();
+      await storage.set({ settings: appState.settings });
     });
   }
 

@@ -47,6 +47,7 @@ const DEFAULT_SETTINGS = {
   notesAutoMath: true,
   glassStyle: 'dark',
   glassDarkness: 68,
+  accentTheme: 'aqua',
   todoAutoReminderMode: 'ask'
 };
 const DEFAULT_DOCK_ITEMS = [
@@ -256,12 +257,21 @@ async function loadDefaultProfile() {
   }
 }
 
-function minWidgetCols() {
-  return Math.max(1, getLayoutConfig().minWidgetCols);
+// Per-widget minimum cell sizes (override the global layout minimum).
+const WIDGET_MIN_OVERRIDES = {
+  'widget-aichat': { cols: 3, rows: 3 }
+};
+
+function minWidgetCols(id) {
+  const base = Math.max(1, getLayoutConfig().minWidgetCols);
+  const o = id && WIDGET_MIN_OVERRIDES[id];
+  return o ? Math.max(base, o.cols) : base;
 }
 
-function minWidgetRows() {
-  return Math.max(1, getLayoutConfig().minWidgetRows);
+function minWidgetRows(id) {
+  const base = Math.max(1, getLayoutConfig().minWidgetRows);
+  const o = id && WIDGET_MIN_OVERRIDES[id];
+  return o ? Math.max(base, o.rows) : base;
 }
 
 function pxFromSpan(span, grid) {
@@ -520,6 +530,7 @@ async function bootstrap() {
   if (settings.glass) document.body.classList.add('glass');
   if ((settings.glassStyle || 'dark') === 'light') document.body.classList.add('glass-light');
   else document.body.classList.remove('glass-light');
+  document.body.dataset.accent = settings.accentTheme || 'aqua';
   const settingsIconImg = document.querySelector('#openSettings img');
   if (settingsIconImg) {
     const useBlackIcon = !!settings.glass && (settings.glassStyle || 'dark') === 'light';
@@ -556,17 +567,17 @@ async function bootstrap() {
     if (Number.isFinite(stored.cw) && Number.isFinite(stored.ch)) {
       span = { cw: stored.cw, ch: stored.ch };
     } else if (Number.isFinite(stored.w) && Number.isFinite(stored.h)) {
-      const minCw = minWidgetCols();
-      const minCh = minWidgetRows();
+      const minCw = minWidgetCols(id);
+      const minCh = minWidgetRows(id);
       span = {
         cw: Math.max(minCw, Math.ceil(stored.w / bootGrid.cellW)),
         ch: Math.max(minCh, Math.ceil(stored.h / bootGrid.cellH))
       };
     } else {
-      span = mergedDefaultSpans[id] || { cw: minWidgetCols(), ch: minWidgetRows() };
+      span = mergedDefaultSpans[id] || { cw: minWidgetCols(id), ch: minWidgetRows(id) };
     }
-    const minCw = minWidgetCols();
-    const minCh = minWidgetRows();
+    const minCw = minWidgetCols(id);
+    const minCh = minWidgetRows(id);
     const spanNorm = {
       cw: Math.max(minCw, span.cw || minCw),
       ch: Math.max(minCh, span.ch || minCh)
@@ -622,8 +633,8 @@ async function bootstrap() {
       if (!p || !Number.isFinite(p.col) || !Number.isFinite(p.row)) return;
       const px = cellToPos(p.col, p.row, bootGrid);
       const s = sizes[id] || {};
-      const minCw = minWidgetCols();
-      const minCh = minWidgetRows();
+      const minCw = minWidgetCols(id);
+      const minCh = minWidgetRows(id);
       const spanNorm = {
         cw: Math.max(minCw, s.cw || minCw),
         ch: Math.max(minCh, s.ch || minCh)
@@ -651,20 +662,20 @@ async function bootstrap() {
       if (Number.isFinite(stored.cw) && Number.isFinite(stored.ch)) {
         span = { cw: stored.cw, ch: stored.ch };
       } else if (Number.isFinite(stored.w) && Number.isFinite(stored.h)) {
-        const minCw = minWidgetCols();
-        const minCh = minWidgetRows();
+        const minCw = minWidgetCols(id);
+        const minCh = minWidgetRows(id);
         span = {
           cw: Math.max(minCw, Math.ceil(stored.w / grid.cellW)),
           ch: Math.max(minCh, Math.ceil(stored.h / grid.cellH))
         };
       } else {
-        span = mergedDefaultSpans[id] || { cw: minWidgetCols(), ch: minWidgetRows() };
+        span = mergedDefaultSpans[id] || { cw: minWidgetCols(id), ch: minWidgetRows(id) };
       }
       const p = positions[id] || mergedDefaultPositions[id] || { col: 0, row: 0 };
       const colRaw = Number.isFinite(p.col) ? p.col : 0;
       const rowRaw = Number.isFinite(p.row) ? p.row : 0;
-      const minCw = minWidgetCols();
-      const minCh = minWidgetRows();
+      const minCw = minWidgetCols(id);
+      const minCh = minWidgetRows(id);
       const spanNorm = { cw: Math.max(minCw, span.cw || minCw), ch: Math.max(minCh, span.ch || minCh) };
       const col = Math.max(0, Math.min(Math.round(colRaw), Math.max(0, grid.cols - spanNorm.cw)));
       const row = Math.max(0, Math.min(Math.round(rowRaw), Math.max(0, grid.rows - spanNorm.ch)));

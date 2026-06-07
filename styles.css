@@ -6,11 +6,66 @@
     --glass-bg: rgba(255, 255, 255, 0.06);
     --glass-border: rgba(255, 255, 255, 0.12);
     --accent: #61dafb;
+    --accent-2: #87e7ff;
+    --accent-rgb: 97, 218, 251;
     --card-radius: 12px;
     --shadow-1: 0 8px 30px rgba(2, 6, 23, 0.6);
     --shadow-2: 0 12px 50px rgba(6, 10, 30, 0.55);
     --transition-fast: 120ms;
     --glass-darkness: 68;
+}
+
+/* ---------- Accent themes ---------- */
+/* Each theme just re-points the accent variables; the rest of the UI reads them. */
+body[data-accent="aqua"] {
+    --accent: #61dafb;
+    --accent-2: #87e7ff;
+    --accent-rgb: 97, 218, 251;
+}
+body[data-accent="aurora"] {
+    --accent: #a78bfa;
+    --accent-2: #67e8c3;
+    --accent-rgb: 167, 139, 250;
+}
+body[data-accent="sunset"] {
+    --accent: #ff8a5c;
+    --accent-2: #ff5e9a;
+    --accent-rgb: 255, 138, 92;
+}
+body[data-accent="neon"] {
+    --accent: #f637ec;
+    --accent-2: #38f9d7;
+    --accent-rgb: 246, 55, 236;
+}
+body[data-accent="emerald"] {
+    --accent: #34d399;
+    --accent-2: #a7f3d0;
+    --accent-rgb: 52, 211, 153;
+}
+body[data-accent="rose"] {
+    --accent: #fb7185;
+    --accent-2: #fda4af;
+    --accent-rgb: 251, 113, 133;
+}
+body[data-accent="gold"] {
+    --accent: #f5c451;
+    --accent-2: #ffe7a3;
+    --accent-rgb: 245, 196, 81;
+}
+body[data-accent="violet"] {
+    --accent: #8b8cff;
+    --accent-2: #c4b5fd;
+    --accent-rgb: 139, 140, 255;
+}
+body[data-accent="ocean"] {
+    --accent: #38bdf8;
+    --accent-2: #818cf8;
+    --accent-rgb: 56, 189, 248;
+}
+body[data-accent="mono"] {
+    --accent: #e5e7eb;
+    --accent-2: #ffffff;
+    --accent-rgb: 229, 231, 235;
 }
 
 /* ---------- Reset & base ---------- */
@@ -78,7 +133,7 @@ body.app-booting #dock {
 }
 
 .icon-btn:focus {
-    outline: 2px solid rgba(97, 218, 251, 0.18);
+    outline: 2px solid rgba(var(--accent-rgb), 0.18);
     outline-offset: 2px;
 }
 
@@ -176,7 +231,7 @@ body.app-booting #dock {
     cursor: grabbing;
     transform: none;
     box-shadow: var(--shadow-2);
-    outline: 2px solid rgba(97, 218, 251, 0.06);
+    outline: 2px solid rgba(var(--accent-rgb), 0.06);
     z-index: 9999;
 }
 
@@ -244,8 +299,8 @@ input[type="checkbox"] {
 input:focus,
 textarea:focus,
 select:focus {
-    box-shadow: 0 6px 20px rgba(97, 218, 251, 0.06);
-    border-color: rgba(97, 218, 251, 0.18);
+    box-shadow: 0 6px 20px rgba(var(--accent-rgb), 0.06);
+    border-color: rgba(var(--accent-rgb), 0.18);
 }
 
 input::placeholder {
@@ -266,7 +321,7 @@ input::placeholder {
     background: var(--accent);
     color: #021224;
     cursor: pointer;
-    box-shadow: 0 6px 18px rgba(97, 218, 251, 0.06);
+    box-shadow: 0 6px 18px rgba(var(--accent-rgb), 0.06);
 }
 
 .btn-primary:active {
@@ -308,7 +363,7 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
     width: min(320px, 72vw);
     padding: 10px 12px;
     border-radius: 10px;
-    border: 1px solid rgba(97, 218, 251, 0.26);
+    border: 1px solid rgba(var(--accent-rgb), 0.26);
     background: rgba(8, 16, 32, 0.98);
     color: var(--muted);
     font-size: 12px;
@@ -375,7 +430,7 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
 
 .search-suggestion-item:hover,
 .search-suggestion-item.active {
-    background: rgba(97, 218, 251, 0.14);
+    background: rgba(var(--accent-rgb), 0.14);
 }
 
 .search-shortcuts {
@@ -498,9 +553,9 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
 }
 
 .todo-remind.active {
-    border-color: rgba(97, 218, 251, 0.35);
+    border-color: rgba(var(--accent-rgb), 0.35);
     color: var(--accent);
-    box-shadow: 0 0 0 1px rgba(97, 218, 251, 0.12) inset;
+    box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.12) inset;
 }
 
 .todo-remind:disabled {
@@ -632,11 +687,11 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
 }
 
 .todo-reminder-alert {
-    border-color: rgba(97, 218, 251, 0.28);
+    border-color: rgba(var(--accent-rgb), 0.28);
 }
 
 .todo-auto-reminder-card {
-    border-color: rgba(97, 218, 251, 0.35);
+    border-color: rgba(var(--accent-rgb), 0.35);
 }
 
 .todo-auto-toast {
@@ -647,7 +702,7 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
     max-width: min(360px, calc(100vw - 24px));
     padding: 10px 12px;
     border-radius: 10px;
-    border: 1px solid rgba(97, 218, 251, 0.3);
+    border: 1px solid rgba(var(--accent-rgb), 0.3);
     background: rgba(8, 16, 32, 0.96);
     color: var(--muted);
     box-shadow: 0 14px 28px rgba(0, 0, 0, 0.34);
@@ -770,7 +825,7 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
 }
 
 .calendar-cell.today {
-    background: rgba(97, 218, 251, 0.2);
+    background: rgba(var(--accent-rgb), 0.2);
     color: #fff;
     font-weight: 700;
 }
@@ -791,7 +846,7 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
 .day-progress-bar {
     height: 100%;
     width: 0%;
-    background: linear-gradient(90deg, #61dafb, #87e7ff);
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
     transition: width 250ms ease;
 }
 
@@ -862,12 +917,92 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
 
 .ai-chat-msg.user {
     align-self: flex-end;
-    background: rgba(97, 218, 251, 0.18);
+    background: rgba(var(--accent-rgb), 0.18);
 }
 
 .ai-chat-msg.assistant {
     align-self: flex-start;
     background: rgba(255, 255, 255, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* ---------- AI chat markdown rendering ---------- */
+.ai-md-text {
+    white-space: normal;
+    word-break: break-word;
+}
+.ai-md-text strong { font-weight: 700; }
+.ai-md-text em { font-style: italic; }
+.ai-md-text a {
+    color: var(--accent);
+    text-decoration: underline;
+}
+.ai-inline-code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.92em;
+    background: rgba(0, 0, 0, 0.32);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 5px;
+    padding: 1px 5px;
+}
+.ai-code-block {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 9px;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.42);
+}
+.ai-code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 4px 6px 4px 10px;
+    background: rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+}
+.ai-code-lang {
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    opacity: 0.7;
+}
+.ai-code-copy {
+    min-height: 0;
+    padding: 3px 10px;
+    font-size: 11px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--muted);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    transition: background var(--transition-fast) ease, color var(--transition-fast) ease;
+}
+.ai-code-copy:hover {
+    background: rgba(var(--accent-rgb), 0.2);
+    border-color: rgba(var(--accent-rgb), 0.4);
+}
+.ai-code-copy.copied {
+    background: rgba(var(--accent-rgb), 0.28);
+    color: #fff;
+}
+.ai-code-block pre {
+    margin: 0;
+    padding: 9px 11px;
+    overflow-x: auto;
+}
+.ai-code-block code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: pre;
+    color: var(--muted);
+}
+.ai-code-block pre::-webkit-scrollbar { height: 7px; }
+.ai-code-block pre::-webkit-scrollbar-thumb {
+    background: rgba(var(--accent-rgb), 0.4);
+    border-radius: 999px;
 }
 
 .ai-chat-input {
@@ -897,12 +1032,12 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
 }
 
 .ai-chat-messages::-webkit-scrollbar-thumb {
-    background: rgba(97, 218, 251, 0.4);
+    background: rgba(var(--accent-rgb), 0.4);
     border-radius: 999px;
 }
 
 .ai-chat-messages {
-    scrollbar-color: rgba(97, 218, 251, 0.4) rgba(255, 255, 255, 0.08);
+    scrollbar-color: rgba(var(--accent-rgb), 0.4) rgba(255, 255, 255, 0.08);
     scrollbar-width: thin;
 }
 
@@ -1232,11 +1367,10 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
     border-radius: 8px;
 }
 
+/* Masonry-style packing so short cards don't leave large empty gaps. */
 .settings-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 14px;
-    align-items: start;
+    column-width: 300px;
+    column-gap: 14px;
 }
 .settings-section {
     background: rgba(255, 255, 255, 0.035);
@@ -1244,9 +1378,15 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
     border-radius: 12px;
     padding: 14px 16px;
     min-width: 0;
+    margin: 0 0 14px;
+    break-inside: avoid;
+    -webkit-column-break-inside: avoid;
+    page-break-inside: avoid;
 }
+.settings-section.hidden { display: none; }
 .settings-section--wide {
-    grid-column: 1 / -1;
+    column-span: all;
+    -webkit-column-span: all;
 }
 .settings-section-title {
     margin: 0 0 12px;
@@ -1327,6 +1467,39 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
     font-size: 12px;
     line-height: 1.4;
 }
+
+/* ---------- Accent theme swatches ---------- */
+.accent-swatches {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+}
+.accent-swatch {
+    width: 26px;
+    height: 26px;
+    min-height: 0;
+    padding: 0;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.18);
+    cursor: pointer;
+    transition: transform var(--transition-fast) ease, box-shadow var(--transition-fast) ease;
+}
+.accent-swatch:hover { transform: scale(1.12); }
+.accent-swatch.active {
+    border-color: #fff;
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35), 0 0 10px rgba(255, 255, 255, 0.25);
+}
+.accent-swatch[data-accent="aqua"]    { background: linear-gradient(135deg, #61dafb, #87e7ff); }
+.accent-swatch[data-accent="aurora"]  { background: linear-gradient(135deg, #a78bfa, #67e8c3); }
+.accent-swatch[data-accent="sunset"]  { background: linear-gradient(135deg, #ff8a5c, #ff5e9a); }
+.accent-swatch[data-accent="neon"]    { background: linear-gradient(135deg, #f637ec, #38f9d7); }
+.accent-swatch[data-accent="emerald"] { background: linear-gradient(135deg, #34d399, #a7f3d0); }
+.accent-swatch[data-accent="rose"]    { background: linear-gradient(135deg, #fb7185, #fda4af); }
+.accent-swatch[data-accent="gold"]    { background: linear-gradient(135deg, #f5c451, #ffe7a3); }
+.accent-swatch[data-accent="violet"]  { background: linear-gradient(135deg, #8b8cff, #c4b5fd); }
+.accent-swatch[data-accent="ocean"]   { background: linear-gradient(135deg, #38bdf8, #818cf8); }
+.accent-swatch[data-accent="mono"]    { background: linear-gradient(135deg, #e5e7eb, #ffffff); }
 
 .help-btn {
     min-height: 0;
@@ -1513,8 +1686,8 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
 }
 
 .wallpaper-tile.active {
-    border-color: rgba(97, 218, 251, 0.75);
-    box-shadow: 0 0 0 2px rgba(97, 218, 251, 0.2);
+    border-color: rgba(var(--accent-rgb), 0.75);
+    box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.2);
 }
 
 .icon-grid-body {
@@ -1873,7 +2046,7 @@ body.glass.glass-light #widget-calendar .calendar-cell {
 
 body.glass.glass-light #widget-calendar .calendar-cell.today {
     color: #10233a;
-    background: rgba(97, 218, 251, 0.32);
+    background: rgba(var(--accent-rgb), 0.32);
 }
 
 /* ---------- Compact widget adaptations ---------- */
@@ -2091,8 +2264,8 @@ body:not(.glass) button {
 }
 
 body:not(.glass) .modal-card .btn-primary {
-    background: #61dafb;
-    border: 1px solid rgba(97, 218, 251, 0.55);
+    background: var(--accent);
+    border: 1px solid rgba(var(--accent-rgb), 0.55);
     color: #071626;
 }
 
@@ -2108,8 +2281,8 @@ body:not(.glass) .modal-card .btn-secondary:hover {
 }
 
 body:not(.glass) .widget .btn-primary {
-    background: #61dafb;
-    border: 1px solid rgba(97, 218, 251, 0.55);
+    background: var(--accent);
+    border: 1px solid rgba(var(--accent-rgb), 0.55);
     color: #071626;
 }
 
@@ -2219,7 +2392,7 @@ body:not(.glass) .notes-input::placeholder {
 button:focus,
 .resize-handle:focus,
 input:focus {
-    outline: 2px solid rgba(97, 218, 251, 0.14);
+    outline: 2px solid rgba(var(--accent-rgb), 0.14);
     outline-offset: 2px;
 }
 
@@ -2334,7 +2507,7 @@ textarea,
     justify-content: space-between;
     padding: 10px 24px;
     background: rgba(8, 16, 36, 0.88);
-    border-bottom: 1px solid rgba(97, 218, 251, 0.22);
+    border-bottom: 1px solid rgba(var(--accent-rgb), 0.22);
     backdrop-filter: blur(14px) saturate(140%);
     -webkit-backdrop-filter: blur(14px) saturate(140%);
     z-index: 10000;
@@ -2394,8 +2567,8 @@ body.edit-layout-mode .widget.resizing-active {
 
 /* Subtle highlight in edit mode */
 body.edit-layout-mode .widget {
-    border-color: rgba(97, 218, 251, 0.10);
-    box-shadow: 0 0 0 1px rgba(97, 218, 251, 0.06);
+    border-color: rgba(var(--accent-rgb), 0.10);
+    box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.06);
 }
 
 /* Dim widget body so handles stand out; keep handle interactive */
@@ -2484,7 +2657,7 @@ body.edit-layout-mode .widget.dragging .widget-handle {
 .resize-handle:hover::before,
 .resize-handle:active::before {
     opacity: 1;
-    filter: drop-shadow(0 0 4px rgba(97, 218, 251, 0.6));
+    filter: drop-shadow(0 0 4px rgba(var(--accent-rgb), 0.6));
 }
 
 /* =====================================================
