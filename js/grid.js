@@ -140,13 +140,23 @@ export function showGridOverlay(workspaceEl, cols, rows) {
   overlay.style.right = 'auto';
   overlay.style.bottom = 'auto';
 
-  // vertical + horizontal line gradients
+  // Two layers each direction: bright MAJOR lines on every cell, plus
+  // fainter MINOR lines at the half-cell to give a denser iOS-like guide.
+  const halfW = cellW / 2;
+  const halfH = cellH / 2;
   overlay.style.backgroundImage = `
-    linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px)
+    linear-gradient(to right,  rgba(255,255,255,0.16) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.16) 1px, transparent 1px),
+    linear-gradient(to right,  rgba(255,255,255,0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.07) 1px, transparent 1px)
   `;
-  overlay.style.backgroundSize = `${cellW}px ${cellH}px, ${cellW}px ${cellH}px`;
-  overlay.style.opacity = '0.12';
+  overlay.style.backgroundSize = `
+    ${cellW}px ${cellH}px,
+    ${cellW}px ${cellH}px,
+    ${halfW}px ${halfH}px,
+    ${halfW}px ${halfH}px
+  `;
+  overlay.style.opacity = '0.5';
   overlay.style.transition = 'opacity .12s ease';
   overlay.style.display = 'block';
 }

@@ -14,6 +14,8 @@ import { initCalendar } from './calendar.js';
 import { initDayProgress } from './dayProgress.js';
 import { initPomodoro } from './pomodoro.js';
 import { initSportsWidget } from './sports.js';
+import { initWeather } from './weather.js';
+import { initCurrency } from './currency.js';
 import { initAIChat } from './aiChat.js';
 import { setLayoutConfig, getLayoutConfig, normalizeLayoutConfig } from './layoutConfig.js';
 import {
@@ -32,7 +34,9 @@ const WIDGET_IDS = [
   'widget-calendar',
   'widget-dayprogress',
   'widget-pomodoro',
-  'widget-sports'
+  'widget-sports',
+  'widget-weather',
+  'widget-currency'
 ];
 
 const DEFAULT_PROFILE_PATH = 'default Settings/default-settings.json';
@@ -80,7 +84,14 @@ const DEFAULT_DOCK_ITEMS = [
 const DEFAULT_TODOS = [{ text: 'Todo', done: false }];
 const DEFAULT_NOTES_TEXT = 'Made by Hatim.';
 const DEFAULT_USER_NAME = '';
-const DEFAULT_POMODORO_STATE = { mode: 'focus', secondsLeft: 1500 };
+const DEFAULT_POMODORO_STATE = { mode: 'focus', secondsLeft: 1500, running: false, endTime: 0 };
+const DEFAULT_POMODORO_SETTINGS = { focusMinutes: 25, breakMinutes: 5 };
+const DEFAULT_WEATHER_SETTINGS = { apiKey: '', units: 'metric', city: '' };
+const DEFAULT_CURRENCY_SETTINGS = {
+  cryptoIds: ['bitcoin', 'ethereum', 'solana'],
+  fiatCodes: ['EUR', 'GBP', 'JPY'],
+  base: 'usd'
+};
 const DEFAULT_IMAGE_WIDGET = { src: '' };
 const DEFAULT_SPORTS_SETTINGS = {
   apiKey: '7a209ecc-49a9-4172-831a-cc255dfd70f1',
@@ -98,8 +109,10 @@ const DEFAULT_AI_CHAT_SETTINGS = {
 const DEFAULT_UNSPLASH_SETTINGS = {
   autoDaily: false,
   apiKey: '',
+  theme: 'random',
   lastUpdatedDate: ''
 };
+const UNSPLASH_THEMES = ['random', 'nature', 'city', 'abstract', 'space', 'minimal', 'mountains', 'ocean'];
 
 const DEFAULT_POSITIONS = {
   "widget-search": { col: 2, row: 0 },
@@ -111,7 +124,9 @@ const DEFAULT_POSITIONS = {
   "widget-calendar": { col: 4, row: 2 },
   "widget-dayprogress": { col: 0, row: 7 },
   "widget-pomodoro": { col: 8, row: 7 },
-  "widget-sports": { col: 10, row: 6 }
+  "widget-sports": { col: 10, row: 6 },
+  "widget-weather": { col: 6, row: 2 },
+  "widget-currency": { col: 7, row: 6 }
 };
 
 const DEFAULT_SPANS = {
@@ -124,7 +139,9 @@ const DEFAULT_SPANS = {
   "widget-calendar": { cw: 6, ch: 5 },
   "widget-dayprogress": { cw: 6, ch: 2 },
   "widget-pomodoro": { cw: 6, ch: 2 },
-  "widget-sports": { cw: 4, ch: 2 }
+  "widget-sports": { cw: 4, ch: 2 },
+  "widget-weather": { cw: 4, ch: 4 },
+  "widget-currency": { cw: 4, ch: 3 }
 };
 
 const DEFAULT_VISIBLE_WIDGETS = {
@@ -137,7 +154,9 @@ const DEFAULT_VISIBLE_WIDGETS = {
   "widget-calendar": true,
   "widget-dayprogress": true,
   "widget-pomodoro": true,
-  "widget-sports": true
+  "widget-sports": true,
+  "widget-weather": true,
+  "widget-currency": true
 };
 
 function hasStoredValue(v) {
@@ -219,8 +238,10 @@ function sanitizeUnsplashSettings(state) {
   const src = (state && typeof state === 'object') ? state : {};
   const autoDaily = !!src.autoDaily;
   const apiKey = typeof src.apiKey === 'string' ? src.apiKey.trim() : '';
+  const rawTheme = typeof src.theme === 'string' ? src.theme.trim().toLowerCase() : 'random';
+  const theme = UNSPLASH_THEMES.includes(rawTheme) ? rawTheme : 'random';
   const lastUpdatedDate = typeof src.lastUpdatedDate === 'string' ? src.lastUpdatedDate : '';
-  return { autoDaily, apiKey, lastUpdatedDate };
+  return { autoDaily, apiKey, theme, lastUpdatedDate };
 }
 
 async function loadDefaultProfile() {
@@ -337,6 +358,9 @@ async function bootstrap() {
   const defaultNotesText = profileNotesText || DEFAULT_NOTES_TEXT;
   const defaultUserName = DEFAULT_USER_NAME;
   const defaultPomodoroState = { ...DEFAULT_POMODORO_STATE, ...profilePomodoroState };
+  const defaultPomodoroSettings = { ...DEFAULT_POMODORO_SETTINGS, ...(profileData.pomodoroSettings || {}) };
+  const defaultWeatherSettings = { ...DEFAULT_WEATHER_SETTINGS, ...(profileData.weatherSettings || {}) };
+  const defaultCurrencySettings = { ...DEFAULT_CURRENCY_SETTINGS, ...(profileData.currencySettings || {}) };
   const defaultImageWidget = sanitizeDefaultImageWidget(profileImageWidget);
   const defaultSportsSettings = { ...DEFAULT_SPORTS_SETTINGS, ...profileSportsSettings };
   const defaultAIChatSettings = sanitizeAIChatSettings({
@@ -361,6 +385,9 @@ async function bootstrap() {
     'userName',
     'userNameOnboarded',
     'pomodoroState',
+    'pomodoroSettings',
+    'weatherSettings',
+    'currencySettings',
     'imageWidget',
     'sportsSettings',
     'aiChatSettings',
@@ -385,6 +412,9 @@ async function bootstrap() {
     hasStoredValue(res.iconGridWidgets) ? res.iconGridWidgets : defaultIconGridWidgets
   );
   const sportsSettings = hasStoredValue(res.sportsSettings) ? { ...defaultSportsSettings, ...res.sportsSettings } : defaultSportsSettings;
+  const pomodoroSettings = hasStoredValue(res.pomodoroSettings) ? { ...defaultPomodoroSettings, ...res.pomodoroSettings } : defaultPomodoroSettings;
+  const weatherSettings = hasStoredValue(res.weatherSettings) ? { ...defaultWeatherSettings, ...res.weatherSettings } : defaultWeatherSettings;
+  const currencySettings = hasStoredValue(res.currencySettings) ? { ...defaultCurrencySettings, ...res.currencySettings } : defaultCurrencySettings;
   const aiChatSettings = hasStoredValue(res.aiChatSettings)
     ? sanitizeAIChatSettings({ ...defaultAIChatSettings, ...res.aiChatSettings })
     : defaultAIChatSettings;
@@ -419,6 +449,9 @@ async function bootstrap() {
     }
   }
   if (!hasStoredValue(res.pomodoroState)) defaultsToPersist.pomodoroState = defaultPomodoroState;
+  if (!hasStoredValue(res.pomodoroSettings)) defaultsToPersist.pomodoroSettings = defaultPomodoroSettings;
+  if (!hasStoredValue(res.weatherSettings)) defaultsToPersist.weatherSettings = defaultWeatherSettings;
+  if (!hasStoredValue(res.currencySettings)) defaultsToPersist.currencySettings = defaultCurrencySettings;
   if (!hasStoredValue(res.imageWidget)) defaultsToPersist.imageWidget = defaultImageWidget;
   if (!hasStoredValue(res.sportsSettings)) defaultsToPersist.sportsSettings = defaultSportsSettings;
   if (!hasStoredValue(res.aiChatSettings)) defaultsToPersist.aiChatSettings = defaultAIChatSettings;
@@ -434,6 +467,7 @@ async function bootstrap() {
     if (
       nextUnsplash.autoDaily !== !!res.unsplashSettings?.autoDaily
       || nextUnsplash.apiKey !== (res.unsplashSettings?.apiKey || '')
+      || nextUnsplash.theme !== (res.unsplashSettings?.theme || 'random')
       || nextUnsplash.lastUpdatedDate !== (res.unsplashSettings?.lastUpdatedDate || '')
     ) {
       defaultsToPersist.unsplashSettings = nextUnsplash;
@@ -453,6 +487,9 @@ async function bootstrap() {
     iconGridWidgets,
     iconGridOpenMode,
     sportsSettings,
+    pomodoroSettings,
+    weatherSettings,
+    currencySettings,
     aiChatSettings,
     unsplashSettings,
     userName,
@@ -669,8 +706,10 @@ async function bootstrap() {
   initAIChat(appState);
   initCalendar();
   initDayProgress();
-  await initPomodoro();
+  await initPomodoro(appState);
   initSportsWidget(appState);
+  initWeather(appState);
+  initCurrency(appState);
   renderIconGridWidgets(iconGridWidgets);
   await initDock();
 

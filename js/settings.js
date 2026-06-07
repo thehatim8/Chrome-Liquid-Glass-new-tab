@@ -23,11 +23,15 @@ function redactApiKeysDeep(value) {
   return out;
 }
 
+const UNSPLASH_THEMES = ['random', 'nature', 'city', 'abstract', 'space', 'minimal', 'mountains', 'ocean'];
+
 function normalizeUnsplashSettings(input) {
   const src = (input && typeof input === 'object') ? input : {};
+  const rawTheme = typeof src.theme === 'string' ? src.theme.trim().toLowerCase() : 'random';
   return {
     autoDaily: !!src.autoDaily,
     apiKey: typeof src.apiKey === 'string' ? src.apiKey.trim() : '',
+    theme: UNSPLASH_THEMES.includes(rawTheme) ? rawTheme : 'random',
     lastUpdatedDate: typeof src.lastUpdatedDate === 'string' ? src.lastUpdatedDate : ''
   };
 }
@@ -149,6 +153,7 @@ export async function initSettings(appState, options = {}) {
   const wallpaperGrid = document.getElementById('wallpaperGrid');
   const bgDailyUnsplash = document.getElementById('bgDailyUnsplash');
   const unsplashApiKey = document.getElementById('unsplashApiKey');
+  const unsplashTheme = document.getElementById('unsplashTheme');
   const saveUnsplashSettings = document.getElementById('saveUnsplashSettings');
   const clearBg = document.getElementById('clearBg');
   const exportSettings = document.getElementById('exportSettings');
@@ -163,6 +168,21 @@ export async function initSettings(appState, options = {}) {
   const setImageWidgetUrl = document.getElementById('setImageWidgetUrl');
   const sportsWidgetSettingsSection = document.getElementById('sportsWidgetSettingsSection');
   const aiChatSettingsSection = document.getElementById('aiChatSettingsSection');
+  const weatherSettingsSection = document.getElementById('weatherSettingsSection');
+  const weatherApiKey = document.getElementById('weatherApiKey');
+  const weatherUnits = document.getElementById('weatherUnits');
+  const weatherCityInput = document.getElementById('weatherCityInput');
+  const saveWeatherSettings = document.getElementById('saveWeatherSettings');
+  const currencySettingsSection = document.getElementById('currencySettingsSection');
+  const currencyBase = document.getElementById('currencyBase');
+  const currencyCryptoIds = document.getElementById('currencyCryptoIds');
+  const currencyFiatCodes = document.getElementById('currencyFiatCodes');
+  const saveCurrencySettings = document.getElementById('saveCurrencySettings');
+  const pomodoroFocusMinutes = document.getElementById('pomodoroFocusMinutes');
+  const pomodoroFocusValue = document.getElementById('pomodoroFocusValue');
+  const pomodoroBreakMinutes = document.getElementById('pomodoroBreakMinutes');
+  const pomodoroBreakValue = document.getElementById('pomodoroBreakValue');
+  const pomodoroSettingsSection = document.getElementById('pomodoroSettingsSection');
   const sportsApiHelp = document.getElementById('sportsApiHelp');
   const unsplashApiHelp = document.getElementById('unsplashApiHelp');
   const sportsWidgetApiKeys = document.getElementById('sportsWidgetApiKeys');
@@ -287,11 +307,15 @@ export async function initSettings(appState, options = {}) {
     return `${yyyy}-${mm}-${dd}`;
   }
 
-  async function fetchUnsplashDailyImage(apiKey) {
+  async function fetchUnsplashDailyImage(apiKey, theme = 'random') {
     const key = String(apiKey || '').trim();
     if (!key) throw new Error('Unsplash API key is missing.');
 
-    const res = await fetch('https://api.unsplash.com/photos/random?orientation=landscape&content_filter=high', {
+    let url = 'https://api.unsplash.com/photos/random?orientation=landscape&content_filter=high';
+    if (theme && theme !== 'random') {
+      url += `&query=${encodeURIComponent(theme)}`;
+    }
+    const res = await fetch(url, {
       headers: {
         Authorization: `Client-ID ${key}`,
         'Accept-Version': 'v1'
@@ -317,7 +341,7 @@ export async function initSettings(appState, options = {}) {
     if (!force && cfg.lastUpdatedDate === today) return false;
 
     try {
-      const imageUrl = await fetchUnsplashDailyImage(cfg.apiKey);
+      const imageUrl = await fetchUnsplashDailyImage(cfg.apiKey, cfg.theme);
       appState.background = imageUrl;
       appState.unsplashSettings.lastUpdatedDate = today;
       applySettingsLocally();
@@ -402,6 +426,18 @@ export async function initSettings(appState, options = {}) {
     const showAIChatSettings = appState.visibleWidgets?.['widget-aichat'] !== false;
     if (aiChatSettingsSection) {
       aiChatSettingsSection.classList.toggle('hidden', !showAIChatSettings);
+    }
+    const showWeatherSettings = appState.visibleWidgets?.['widget-weather'] !== false;
+    if (weatherSettingsSection) {
+      weatherSettingsSection.classList.toggle('hidden', !showWeatherSettings);
+    }
+    const showCurrencySettings = appState.visibleWidgets?.['widget-currency'] !== false;
+    if (currencySettingsSection) {
+      currencySettingsSection.classList.toggle('hidden', !showCurrencySettings);
+    }
+    const showPomodoroSettings = appState.visibleWidgets?.['widget-pomodoro'] !== false;
+    if (pomodoroSettingsSection) {
+      pomodoroSettingsSection.classList.toggle('hidden', !showPomodoroSettings);
     }
   }
 
@@ -492,6 +528,81 @@ export async function initSettings(appState, options = {}) {
         await storage.set({ aiChatSettings: appState.aiChatSettings });
         alert('AI Chat settings saved.');
       });
+    }
+  }
+
+  function initWeatherSettings() {
+    appState.weatherSettings = appState.weatherSettings || {};
+    if (weatherApiKey) weatherApiKey.value = appState.weatherSettings.apiKey || '';
+    if (weatherUnits) weatherUnits.value = appState.weatherSettings.units === 'imperial' ? 'imperial' : 'metric';
+    if (weatherCityInput) weatherCityInput.value = appState.weatherSettings.city || '';
+
+    if (saveWeatherSettings) {
+      saveWeatherSettings.addEventListener('click', async () => {
+        appState.weatherSettings = {
+          apiKey: (weatherApiKey?.value || '').trim(),
+          units: weatherUnits?.value === 'imperial' ? 'imperial' : 'metric',
+          city: (weatherCityInput?.value || '').trim()
+        };
+        await storage.set({ weatherSettings: appState.weatherSettings });
+        alert('Weather settings saved.');
+      });
+    }
+  }
+
+  function initCurrencySettings() {
+    const toLines = (v) => Array.isArray(v) ? v.join('\n') : String(v || '');
+    appState.currencySettings = appState.currencySettings || {};
+    if (currencyBase) currencyBase.value = appState.currencySettings.base || 'usd';
+    if (currencyCryptoIds) currencyCryptoIds.value = toLines(appState.currencySettings.cryptoIds);
+    if (currencyFiatCodes) currencyFiatCodes.value = toLines(appState.currencySettings.fiatCodes);
+
+    if (saveCurrencySettings) {
+      saveCurrencySettings.addEventListener('click', async () => {
+        const parseList = (raw) => String(raw || '')
+          .split(/[\n,]/)
+          .map((s) => s.trim())
+          .filter(Boolean);
+        appState.currencySettings = {
+          base: ((currencyBase?.value || 'usd').trim() || 'usd').toLowerCase(),
+          cryptoIds: parseList(currencyCryptoIds?.value).map((s) => s.toLowerCase()),
+          fiatCodes: parseList(currencyFiatCodes?.value).map((s) => s.toUpperCase())
+        };
+        await storage.set({ currencySettings: appState.currencySettings });
+        alert('Markets settings saved.');
+      });
+    }
+  }
+
+  function initPomodoroSettings() {
+    appState.pomodoroSettings = appState.pomodoroSettings || { focusMinutes: 25, breakMinutes: 5 };
+    const focus = Math.max(1, Math.round(Number(appState.pomodoroSettings.focusMinutes) || 25));
+    const brk = Math.max(1, Math.round(Number(appState.pomodoroSettings.breakMinutes) || 5));
+
+    if (pomodoroFocusMinutes) pomodoroFocusMinutes.value = String(focus);
+    if (pomodoroBreakMinutes) pomodoroBreakMinutes.value = String(brk);
+    if (pomodoroFocusValue) pomodoroFocusValue.textContent = `${focus} min`;
+    if (pomodoroBreakValue) pomodoroBreakValue.textContent = `${brk} min`;
+
+    const save = async () => {
+      appState.pomodoroSettings = {
+        focusMinutes: Math.max(1, Math.round(Number(pomodoroFocusMinutes?.value) || 25)),
+        breakMinutes: Math.max(1, Math.round(Number(pomodoroBreakMinutes?.value) || 5))
+      };
+      await storage.set({ pomodoroSettings: appState.pomodoroSettings });
+    };
+
+    if (pomodoroFocusMinutes) {
+      pomodoroFocusMinutes.addEventListener('input', () => {
+        if (pomodoroFocusValue) pomodoroFocusValue.textContent = `${pomodoroFocusMinutes.value} min`;
+      });
+      pomodoroFocusMinutes.addEventListener('change', save);
+    }
+    if (pomodoroBreakMinutes) {
+      pomodoroBreakMinutes.addEventListener('input', () => {
+        if (pomodoroBreakValue) pomodoroBreakValue.textContent = `${pomodoroBreakMinutes.value} min`;
+      });
+      pomodoroBreakMinutes.addEventListener('change', save);
     }
   }
 
@@ -946,12 +1057,18 @@ export async function initSettings(appState, options = {}) {
   if (unsplashApiKey) {
     unsplashApiKey.value = appState.unsplashSettings.apiKey || '';
   }
+  if (unsplashTheme) {
+    unsplashTheme.value = appState.unsplashSettings.theme || 'random';
+  }
   if (saveUnsplashSettings) {
     saveUnsplashSettings.addEventListener('click', async () => {
+      const themeChanged = unsplashTheme && unsplashTheme.value !== (appState.unsplashSettings?.theme || 'random');
       const next = normalizeUnsplashSettings({
         autoDaily: !!bgDailyUnsplash?.checked,
         apiKey: unsplashApiKey?.value || '',
-        lastUpdatedDate: appState.unsplashSettings?.lastUpdatedDate || ''
+        theme: unsplashTheme?.value || 'random',
+        // Force a refresh when the theme changes by clearing the daily stamp.
+        lastUpdatedDate: themeChanged ? '' : (appState.unsplashSettings?.lastUpdatedDate || '')
       });
 
       if (next.autoDaily && !next.apiKey) {
@@ -1138,6 +1255,9 @@ export async function initSettings(appState, options = {}) {
   initImageWidgetSettings();
   initSportsWidgetSettings();
   initAIChatSettings();
+  initWeatherSettings();
+  initCurrencySettings();
+  initPomodoroSettings();
   builtInWallpapers = await getBuiltInWallpapers();
   renderWallpaperGrid();
   renderWidgetVisibility();

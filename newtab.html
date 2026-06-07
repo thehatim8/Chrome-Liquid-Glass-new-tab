@@ -146,6 +146,38 @@
                     <div id="sportsMeta" class="sports-meta"></div>
                 </div>
             </div>
+
+            <div class="widget" id="widget-weather" data-widget="weather">
+                <div class="widget-handle">
+                    <span>Weather</span>
+                    <button id="weatherRefresh" class="btn-secondary weather-refresh-btn" type="button" title="Refresh" data-no-drag>Refresh</button>
+                </div>
+                <div class="widget-body weather-body">
+                    <div id="weatherStatus" class="weather-status">Loading weather...</div>
+                    <div id="weatherCurrent" class="weather-current hidden">
+                        <div class="weather-now">
+                            <img id="weatherIcon" class="weather-icon" alt="" draggable="false">
+                            <div class="weather-now-text">
+                                <div id="weatherTemp" class="weather-temp">--°</div>
+                                <div id="weatherDesc" class="weather-desc"></div>
+                            </div>
+                        </div>
+                        <div id="weatherCity" class="weather-city"></div>
+                    </div>
+                    <div id="weatherForecast" class="weather-forecast"></div>
+                </div>
+            </div>
+
+            <div class="widget" id="widget-currency" data-widget="currency">
+                <div class="widget-handle">
+                    <span>Markets</span>
+                    <button id="currencyRefresh" class="btn-secondary currency-refresh-btn" type="button" title="Refresh" data-no-drag>Refresh</button>
+                </div>
+                <div class="widget-body currency-body">
+                    <div id="currencyStatus" class="currency-status">Loading rates...</div>
+                    <ul id="currencyList" class="currency-list"></ul>
+                </div>
+            </div>
         </main>
 
         <nav id="dock" class="dock">
@@ -277,6 +309,62 @@
 
                 <hr>
 
+                <div id="pomodoroSettingsSection" style="margin-top:10px">
+                    <h2>Pomodoro settings</h2>
+                    <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">
+                        <div class="slider-row">
+                            <label for="pomodoroFocusMinutes">Focus duration: <span id="pomodoroFocusValue">25 min</span></label>
+                            <input id="pomodoroFocusMinutes" type="range" min="1" max="120" step="1" value="25">
+                        </div>
+                        <div class="slider-row">
+                            <label for="pomodoroBreakMinutes">Break duration: <span id="pomodoroBreakValue">5 min</span></label>
+                            <input id="pomodoroBreakMinutes" type="range" min="1" max="60" step="1" value="5">
+                        </div>
+                        <small style="opacity:.75">Timer notifications fire even when this tab is closed.</small>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div id="weatherSettingsSection" style="margin-top:10px">
+                    <h2>Weather widget settings</h2>
+                    <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+                        <input id="weatherApiKey" type="password" placeholder="OpenWeatherMap API key">
+                        <div style="display:flex;gap:8px;align-items:center">
+                            <label for="weatherUnits">Units</label>
+                            <select id="weatherUnits">
+                                <option value="metric">Celsius (°C)</option>
+                                <option value="imperial">Fahrenheit (°F)</option>
+                            </select>
+                        </div>
+                        <input id="weatherCityInput" type="text" placeholder="City (leave blank to auto-detect from IP)">
+                        <small style="opacity:.75">Free key from openweathermap.org. City auto-detects from your IP if left empty.</small>
+                        <div style="display:flex;justify-content:flex-end">
+                            <button id="saveWeatherSettings" class="btn-primary" type="button">Save Weather Settings</button>
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div id="currencySettingsSection" style="margin-top:10px">
+                    <h2>Markets widget settings</h2>
+                    <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+                        <label for="currencyBase">Base currency</label>
+                        <input id="currencyBase" type="text" maxlength="5" placeholder="usd">
+                        <label for="currencyCryptoIds">Crypto (CoinGecko IDs, one per line)</label>
+                        <textarea id="currencyCryptoIds" rows="3" placeholder="bitcoin&#10;ethereum&#10;solana"></textarea>
+                        <label for="currencyFiatCodes">Fiat currencies (codes, one per line)</label>
+                        <textarea id="currencyFiatCodes" rows="3" placeholder="EUR&#10;GBP&#10;JPY"></textarea>
+                        <small style="opacity:.75">Crypto via CoinGecko, fiat via open.er-api.com. Both free, no key needed.</small>
+                        <div style="display:flex;justify-content:flex-end">
+                            <button id="saveCurrencySettings" class="btn-primary" type="button">Save Markets Settings</button>
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+
                 <div style="margin-top:10px">
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
                         <h2>Icon Grid widgets</h2>
@@ -320,6 +408,19 @@
                         <input type="checkbox" id="bgDailyUnsplash">
                         <span>Automatically change wallpaper daily</span>
                     </label>
+                    <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+                        <label for="unsplashTheme">Theme</label>
+                        <select id="unsplashTheme">
+                            <option value="random">Random</option>
+                            <option value="nature">Nature</option>
+                            <option value="city">City</option>
+                            <option value="abstract">Abstract</option>
+                            <option value="space">Space</option>
+                            <option value="minimal">Minimal</option>
+                            <option value="mountains">Mountains</option>
+                            <option value="ocean">Ocean</option>
+                        </select>
+                    </div>
                     <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
                         <input id="unsplashApiKey" type="password" placeholder="Unsplash Access Key">
                         <button id="saveUnsplashSettings" class="btn-primary" type="button">Save Unsplash Settings</button>

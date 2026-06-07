@@ -104,12 +104,17 @@ body.app-booting #dock {
     width: var(--grid-width, calc(100% - (var(--grid-offset-x, 28px) * 2)));
     height: var(--grid-height, calc(100% - (var(--grid-offset-y, 28px) * 2)));
     background-image:
-        linear-gradient(to right, rgba(255, 255, 255, 0.09) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255, 255, 255, 0.09) 1px, transparent 1px);
-    background-size: var(--grid-cell-w, 100px) var(--grid-cell-h, 100px),
-        var(--grid-cell-w, 100px) var(--grid-cell-h, 100px);
+        linear-gradient(to right, rgba(255, 255, 255, 0.16) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.16) 1px, transparent 1px),
+        linear-gradient(to right, rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+    background-size:
+        var(--grid-cell-w, 100px) var(--grid-cell-h, 100px),
+        var(--grid-cell-w, 100px) var(--grid-cell-h, 100px),
+        calc(var(--grid-cell-w, 100px) / 2) calc(var(--grid-cell-h, 100px) / 2),
+        calc(var(--grid-cell-w, 100px) / 2) calc(var(--grid-cell-h, 100px) / 2);
     pointer-events: none;
-    opacity: 0.22;
+    opacity: 0.5;
     z-index: 1;
 }
 
@@ -2144,6 +2149,22 @@ body.edit-layout-mode .widget.resizing-active {
     animation: none;
 }
 
+/* iOS-style spring snap: width/height/left/top ease into each grid cell step */
+.widget.resizing-active {
+    transition:
+        width  0.13s cubic-bezier(0.22, 1, 0.36, 1),
+        height 0.13s cubic-bezier(0.22, 1, 0.36, 1),
+        left   0.13s cubic-bezier(0.22, 1, 0.36, 1),
+        top    0.13s cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+.resize-overlay.resizing-active {
+    transition:
+        width  0.13s cubic-bezier(0.22, 1, 0.36, 1),
+        height 0.13s cubic-bezier(0.22, 1, 0.36, 1),
+        left   0.13s cubic-bezier(0.22, 1, 0.36, 1),
+        top    0.13s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 /* Subtle highlight in edit mode */
 body.edit-layout-mode .widget {
     border-color: rgba(97, 218, 251, 0.10);
@@ -2237,4 +2258,150 @@ body.edit-layout-mode .widget.dragging .widget-handle {
 .resize-handle:active::before {
     opacity: 1;
     filter: drop-shadow(0 0 4px rgba(97, 218, 251, 0.6));
+}
+
+/* =====================================================
+   WEATHER WIDGET
+   ===================================================== */
+.weather-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.weather-refresh-btn,
+.currency-refresh-btn {
+    min-height: 26px;
+    padding: 4px 8px;
+    font-size: 12px;
+}
+.weather-status,
+.currency-status {
+    font-size: 12px;
+    color: var(--muted-2);
+}
+.weather-current {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.weather-now {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.weather-icon {
+    width: 52px;
+    height: 52px;
+    object-fit: contain;
+}
+.weather-temp {
+    font-size: 30px;
+    font-weight: 700;
+    color: var(--muted);
+    line-height: 1;
+}
+.weather-desc {
+    font-size: 12px;
+    color: var(--muted-2);
+    text-transform: capitalize;
+}
+.weather-city {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted-2);
+}
+.weather-forecast {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.weather-forecast-day {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 4px 8px;
+    font-size: 13px;
+    color: var(--muted);
+}
+.weather-forecast-label {
+    flex: 1;
+    font-weight: 600;
+}
+.weather-forecast-icon {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+}
+.weather-forecast-temp {
+    font-variant-numeric: tabular-nums;
+    color: var(--muted-2);
+}
+
+/* =====================================================
+   MARKETS / CURRENCY WIDGET
+   ===================================================== */
+.currency-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.currency-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.currency-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 6px 8px;
+    font-size: 13px;
+    color: var(--muted);
+}
+.currency-name {
+    flex: 1;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.currency-value {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+.currency-change {
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    min-width: 52px;
+    text-align: right;
+}
+.currency-change.up { color: #4ade80; }
+.currency-change.down { color: #f87171; }
+
+/* =====================================================
+   SETTINGS SLIDER ROW (e.g. Pomodoro durations)
+   ===================================================== */
+.slider-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.slider-row label {
+    font-size: 13px;
+    color: var(--muted-2);
+}
+.slider-row input[type="range"] {
+    width: 100%;
+    accent-color: var(--accent);
 }

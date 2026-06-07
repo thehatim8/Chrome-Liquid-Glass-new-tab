@@ -245,33 +245,58 @@ function attachHandle(handle, dir, widgetEl, workspaceEl, id, overlay) {
     const dy = e.clientY - start.clientY;
     const grid = gridNow;
 
-    const minWpx = minW(grid);
-    const minHpx = minH(grid);
-    const maxWpx = Math.round(grid.cellW * grid.cols - PAD_X);
-    const maxHpx = Math.round(grid.cellH * grid.rows - PAD_Y);
+    const minCols = minWidgetCols();
+    const minRows = minWidgetRows();
+    const cellW = grid.cellW;
+    const cellH = grid.cellH;
 
-    let newW = start.w, newH = start.h, newLeft = start.left, newTop = start.top;
+    // Raw pixel target based on the drag delta…
+    const rawW = cfg.anchorRight ? (start.w - dx) : (start.w + dx);
+    const rawH = cfg.anchorBottom ? (start.h - dy) : (start.h + dy);
 
+    // …then SNAP to whole grid cells live (iOS-style discrete sizing).
+    let cw = Math.round((rawW + PAD_X) / cellW);
+    let ch = Math.round((rawH + PAD_Y) / cellH);
+    cw = Math.max(minCols, Math.min(cw, grid.cols));
+    ch = Math.max(minRows, Math.min(ch, grid.rows));
+
+    let newW = Math.round(cw * cellW - PAD_X);
+    let newH = Math.round(ch * cellH - PAD_Y);
+    let newLeft = start.left;
+    let newTop  = start.top;
+
+    if (cfg.anchorRight) newLeft = start.left + start.w - newW;
+    if (cfg.anchorBottom) newTop = start.top + start.h - newH;
+
+    // Keep the snapped box inside the grid bounds; snapAndSave corrects on release.
+    const minX = grid.offsetX, maxX = grid.offsetX + grid.width;
+    const minY = grid.offsetY, maxY = grid.offsetY + grid.height;
     if (cfg.anchorRight) {
-      newW    = Math.max(minWpx, Math.min(maxWpx, start.w - dx));
-      newLeft = start.left + (start.w - newW);
-    } else {
-      newW = Math.max(minWpx, Math.min(maxWpx, start.w + dx));
+      if (newLeft < minX) { newW = Math.round(start.left + start.w - minX); newLeft = minX; }
+    } else if (newLeft + newW > maxX) {
+      newW = Math.round(maxX - newLeft);
     }
-
     if (cfg.anchorBottom) {
-      newH   = Math.max(minHpx, Math.min(maxHpx, start.h - dy));
-      newTop = start.top + (start.h - newH);
-    } else {
-      newH = Math.max(minHpx, Math.min(maxHpx, start.h + dy));
+      if (newTop < minY) { newH = Math.round(start.top + start.h - minY); newTop = minY; }
+    } else if (newTop + newH > maxY) {
+      newH = Math.round(maxY - newTop);
     }
 
-    widgetEl.style.left   = Math.round(newLeft) + 'px';
-    widgetEl.style.top    = Math.round(newTop)  + 'px';
-    widgetEl.style.width  = Math.round(newW)    + 'px';
-    widgetEl.style.height = Math.round(newH)    + 'px';
+    const L = Math.round(newLeft), T = Math.round(newTop);
+    const W = Math.round(newW), H = Math.round(newH);
+    widgetEl.style.left   = L + 'px';
+    widgetEl.style.top    = T + 'px';
+    widgetEl.style.width  = W + 'px';
+    widgetEl.style.height = H + 'px';
 
-    syncOverlay(overlay, widgetEl);
+    // Drive the overlay to the same target box so its handles spring in lockstep
+    // with the widget instead of lagging behind the CSS transition.
+    overlay.style.left   = L + 'px';
+    overlay.style.top    = T + 'px';
+    overlay.style.width  = W + 'px';
+    overlay.style.height = H + 'px';
+    const wz = parseInt(widgetEl.style.zIndex || '5', 10);
+    overlay.style.zIndex = (wz + 1) + '';
   }
 
   async function onUp() {

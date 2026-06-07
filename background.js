@@ -1,5 +1,6 @@
 const DEFAULT_OPENROUTER_MODEL = 'openrouter/auto';
 const TODO_ALARM_PREFIX = 'todo-reminder:';
+const POMODORO_ALARM = 'pomodoro-end';
 
 function normalizeModelName(rawModel) {
   const m = String(rawModel || '').trim();
@@ -137,6 +138,47 @@ async function scheduleTodoReminderAlarmsFromStorage() {
   );
 }
 
+function pomodoroDuration(mode, settings) {
+  const focus = Math.max(1, Math.round(Number(settings?.focusMinutes) || 25));
+  const brk = Math.max(1, Math.round(Number(settings?.breakMinutes) || 5));
+  return (mode === 'break' ? brk : focus) * 60;
+}
+
+// Advance the Pomodoro to the next mode and notify. Idempotent: only acts if a
+// running timer has actually reached (or passed) its end time.
+async function advancePomodoro() {
+  const res = await storageGet(['pomodoroState', 'pomodoroSettings']);
+  const state = res.pomodoroState || {};
+  const settings = res.pomodoroSettings || {};
+  if (!state.running) return;
+  const endTime = Number(state.endTime) || 0;
+  if (endTime && Date.now() < endTime - 1500) return; // not done yet
+
+  const finishedMode = state.mode === 'break' ? 'break' : 'focus';
+  const nextMode = finishedMode === 'break' ? 'focus' : 'break';
+  const nextSeconds = pomodoroDuration(nextMode, settings);
+
+  await storageSet({
+    pomodoroState: {
+      mode: nextMode,
+      running: false,
+      endTime: 0,
+      secondsLeft: nextSeconds
+    }
+  });
+  await alarmsClear(POMODORO_ALARM);
+
+  await notificationsCreate(`pomodoro-${Date.now()}`, {
+    type: 'basic',
+    iconUrl: 'icons/icon128.png',
+    title: finishedMode === 'break' ? 'Break complete' : 'Focus complete',
+    message: finishedMode === 'break'
+      ? 'Break over — back to focus.'
+      : 'Nice work! Time for a break.',
+    priority: 2
+  });
+}
+
 async function markReminderSent(todoId) {
   const res = await storageGet(['todos', 'settings']);
   const normalized = normalizeTodos(res.todos || []);
@@ -156,6 +198,28 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     scheduleTodoReminderAlarmsFromStorage()
       .then(() => sendResponse({ ok: true }))
       .catch((err) => sendResponse({ ok: false, error: err?.message || 'Failed to refresh reminders.' }));
+    return true;
+  }
+
+  if (message?.type === 'pomodoro-schedule') {
+    const when = Number(message.endTime) || (Date.now() + 1000);
+    alarmsCreate(POMODORO_ALARM, Math.max(Date.now() + 1000, when))
+      .then(() => sendResponse({ ok: true }))
+      .catch((err) => sendResponse({ ok: false, error: err?.message || 'Failed to schedule.' }));
+    return true;
+  }
+
+  if (message?.type === 'pomodoro-clear') {
+    alarmsClear(POMODORO_ALARM)
+      .then(() => sendResponse({ ok: true }))
+      .catch(() => sendResponse({ ok: false }));
+    return true;
+  }
+
+  if (message?.type === 'pomodoro-fire') {
+    advancePomodoro()
+      .then(() => sendResponse({ ok: true }))
+      .catch((err) => sendResponse({ ok: false, error: err?.message || 'Failed.' }));
     return true;
   }
 
@@ -224,6 +288,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 });
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm?.name === POMODORO_ALARM) {
+    await advancePomodoro();
+    return;
+  }
   if (!alarm?.name || !alarm.name.startsWith(TODO_ALARM_PREFIX)) return;
   const todoId = alarm.name.slice(TODO_ALARM_PREFIX.length);
   if (!todoId) return;

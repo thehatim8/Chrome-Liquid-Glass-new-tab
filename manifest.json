@@ -14,7 +14,11 @@
     "https://cricket-api-free-data.p.rapidapi.com/*",
     "https://api.web3forms.com/*",
     "https://api.unsplash.com/*",
-    "https://images.unsplash.com/*"
+    "https://images.unsplash.com/*",
+    "https://api.openweathermap.org/*",
+    "https://ipapi.co/*",
+    "https://api.coingecko.com/*",
+    "https://open.er-api.com/*"
   ],
   "icons": {
     "48": "icons/icon48.png",

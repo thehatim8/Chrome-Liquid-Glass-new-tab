@@ -1,9 +1,12 @@
 import { storage } from './storage.js';
 
-const FOCUS_SECONDS = 25 * 60;
-const BREAK_SECONDS = 5 * 60;
+function sendBg(type, payload = {}) {
+  try {
+    chrome.runtime.sendMessage({ type, ...payload }, () => void chrome.runtime.lastError);
+  } catch (_) { /* extension context not available */ }
+}
 
-export async function initPomodoro() {
+export async function initPomodoro(appState) {
   const timeEl = document.getElementById('pomodoroTime');
   const modeEl = document.getElementById('pomodoroMode');
   const startPauseBtn = document.getElementById('pomodoroStartPause');
@@ -12,27 +15,33 @@ export async function initPomodoro() {
 
   if (!timeEl || !modeEl || !startPauseBtn || !resetBtn || !toggleModeBtn) return;
 
-  const res = await storage.get(['pomodoroState']);
-  const rawMode = res.pomodoroState?.mode;
-  const rawSeconds = res.pomodoroState?.secondsLeft;
-  const isLegacyDefault =
-    rawMode === 'break' &&
-    (rawSeconds === 300 || rawSeconds === 210);
+  const settings = appState?.pomodoroSettings || { focusMinutes: 25, breakMinutes: 5 };
 
-  const state = {
-    mode: isLegacyDefault ? 'focus' : (rawMode === 'break' ? 'break' : 'focus'),
-    running: false,
-    secondsLeft: isLegacyDefault
-      ? FOCUS_SECONDS
-      : Number.isFinite(rawSeconds)
-      ? rawSeconds
-      : FOCUS_SECONDS
-  };
+  function focusSecs() { return Math.max(1, Math.round((Number(settings.focusMinutes) || 25) * 60)); }
+  function breakSecs() { return Math.max(1, Math.round((Number(settings.breakMinutes) || 5) * 60)); }
+  function modeDuration(mode) { return mode === 'break' ? breakSecs() : focusSecs(); }
+
+  const res = await storage.get(['pomodoroState']);
+  const st = res.pomodoroState || {};
+
+  let mode = st.mode === 'break' ? 'break' : 'focus';
+  let running = !!st.running;
+  let endTime = Number.isFinite(st.endTime) ? st.endTime : 0;
+  let secondsLeft = Number.isFinite(st.secondsLeft) ? st.secondsLeft : modeDuration(mode);
+
+  // Legacy default cleanup: old builds seeded a 5-min break as the default.
+  const looksLegacy = st.mode === 'break' && !running && (st.secondsLeft === 300 || st.secondsLeft === 210);
+  if (looksLegacy) {
+    mode = 'focus';
+    secondsLeft = modeDuration('focus');
+  }
 
   let timer = null;
+  let firedFor = 0;
 
-  function modeDuration(mode) {
-    return mode === 'break' ? BREAK_SECONDS : FOCUS_SECONDS;
+  function currentSeconds() {
+    if (running && endTime) return Math.max(0, Math.round((endTime - Date.now()) / 1000));
+    return Math.max(0, secondsLeft);
   }
 
   function format(sec) {
@@ -41,71 +50,100 @@ export async function initPomodoro() {
     return `${mm}:${ss}`;
   }
 
-  async function persist() {
-    await storage.set({
-      pomodoroState: {
-        mode: state.mode,
-        secondsLeft: state.secondsLeft
-      }
-    });
+  function startTicker() {
+    if (timer) return;
+    timer = setInterval(render, 1000);
+  }
+  function stopTicker() {
+    if (timer) { clearInterval(timer); timer = null; }
   }
 
   function render() {
-    timeEl.textContent = format(state.secondsLeft);
-    modeEl.textContent = state.mode === 'break' ? 'Break' : 'Focus';
-    startPauseBtn.textContent = state.running ? 'Pause' : 'Start';
-    toggleModeBtn.textContent = state.mode === 'break' ? 'Focus' : 'Break';
+    const s = currentSeconds();
+    timeEl.textContent = format(s);
+    modeEl.textContent = mode === 'break' ? 'Break' : 'Focus';
+    startPauseBtn.textContent = running ? 'Pause' : 'Start';
+    toggleModeBtn.textContent = mode === 'break' ? 'Focus' : 'Break';
+    // When the running timer hits zero, let the background service worker do the
+    // mode switch + notification (works even if this tab later closes). Fire once.
+    if (running && s <= 0 && firedFor !== endTime) {
+      firedFor = endTime;
+      sendBg('pomodoro-fire');
+    }
   }
 
-  async function tick() {
-    if (!state.running) return;
-    state.secondsLeft -= 1;
-    if (state.secondsLeft <= 0) {
-      state.mode = state.mode === 'break' ? 'focus' : 'break';
-      state.secondsLeft = modeDuration(state.mode);
-      state.running = false;
-      clearInterval(timer);
-      timer = null;
-      alert(state.mode === 'break' ? 'Focus complete. Break time.' : 'Break complete. Back to focus.');
-    }
-    render();
-    await persist();
+  async function persist() {
+    await storage.set({ pomodoroState: { mode, running, endTime, secondsLeft } });
   }
 
   startPauseBtn.addEventListener('click', async () => {
-    state.running = !state.running;
-    if (state.running && !timer) {
-      timer = setInterval(() => { void tick(); }, 1000);
-    } else if (!state.running && timer) {
-      clearInterval(timer);
-      timer = null;
+    if (!running) {
+      const s = secondsLeft > 0 ? secondsLeft : modeDuration(mode);
+      running = true;
+      secondsLeft = s;
+      endTime = Date.now() + s * 1000;
+      firedFor = 0;
+      startTicker();
+      await persist();
+      sendBg('pomodoro-schedule', { endTime });
+    } else {
+      secondsLeft = currentSeconds();
+      running = false;
+      endTime = 0;
+      stopTicker();
+      await persist();
+      sendBg('pomodoro-clear');
     }
     render();
-    await persist();
   });
 
   resetBtn.addEventListener('click', async () => {
-    state.running = false;
-    state.secondsLeft = modeDuration(state.mode);
-    if (timer) {
-      clearInterval(timer);
-      timer = null;
-    }
-    render();
+    running = false;
+    endTime = 0;
+    secondsLeft = modeDuration(mode);
+    stopTicker();
     await persist();
+    sendBg('pomodoro-clear');
+    render();
   });
 
   toggleModeBtn.addEventListener('click', async () => {
-    state.running = false;
-    state.mode = state.mode === 'break' ? 'focus' : 'break';
-    state.secondsLeft = modeDuration(state.mode);
-    if (timer) {
-      clearInterval(timer);
-      timer = null;
-    }
-    render();
+    running = false;
+    endTime = 0;
+    mode = mode === 'break' ? 'focus' : 'break';
+    secondsLeft = modeDuration(mode);
+    stopTicker();
     await persist();
+    sendBg('pomodoro-clear');
+    render();
   });
 
+  // Follow background-driven transitions (mode switch when a timer completes).
+  try {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== 'local') return;
+      if (changes.pomodoroState) {
+        const v = changes.pomodoroState.newValue || {};
+        mode = v.mode === 'break' ? 'break' : 'focus';
+        running = !!v.running;
+        endTime = Number.isFinite(v.endTime) ? v.endTime : 0;
+        secondsLeft = Number.isFinite(v.secondsLeft) ? v.secondsLeft : modeDuration(mode);
+        if (running) { firedFor = 0; startTicker(); } else { stopTicker(); }
+        render();
+      }
+      if (changes.pomodoroSettings) {
+        const v = changes.pomodoroSettings.newValue || {};
+        if (Number.isFinite(Number(v.focusMinutes))) settings.focusMinutes = Number(v.focusMinutes);
+        if (Number.isFinite(Number(v.breakMinutes))) settings.breakMinutes = Number(v.breakMinutes);
+        if (appState) appState.pomodoroSettings = settings;
+        if (!running) {
+          secondsLeft = modeDuration(mode);
+          render();
+        }
+      }
+    });
+  } catch (_) { /* storage events unavailable */ }
+
+  if (running) startTicker();
   render();
 }
