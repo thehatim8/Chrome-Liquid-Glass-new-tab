@@ -46,28 +46,43 @@ export function initCalendar() {
     yearSelect.value = String(year);
     gridEl.innerHTML = '';
 
+    // Weekday header row (fixed height) ...
+    const namesRow = document.createElement('div');
+    namesRow.className = 'calendar-day-names';
     ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach((d) => {
       const head = document.createElement('div');
       head.className = 'calendar-day-name';
       head.textContent = d;
-      gridEl.appendChild(head);
+      namesRow.appendChild(head);
     });
+    gridEl.appendChild(namesRow);
+
+    // ... and the day cells in their own grid that stretches to fill the
+    // remaining widget height, so cells grow/shrink with the widget size.
+    const daysWrap = document.createElement('div');
+    daysWrap.className = 'calendar-days';
+    // Six rows always, so the grid height is stable across months.
+    daysWrap.style.gridTemplateRows = 'repeat(6, minmax(0, 1fr))';
 
     for (let i = 0; i < startWeekday; i++) {
       const empty = document.createElement('div');
       empty.className = 'calendar-cell empty';
-      gridEl.appendChild(empty);
+      daysWrap.appendChild(empty);
     }
 
     for (let day = 1; day <= daysInMonth; day++) {
       const cell = document.createElement('div');
       cell.className = 'calendar-cell';
-      cell.textContent = String(day);
+      const num = document.createElement('span');
+      num.className = 'calendar-cell-num';
+      num.textContent = String(day);
+      cell.appendChild(num);
       if (isCurrentMonth && day === now.getDate()) {
         cell.classList.add('today');
       }
-      gridEl.appendChild(cell);
+      daysWrap.appendChild(cell);
     }
+    gridEl.appendChild(daysWrap);
 
     gridEl.classList.remove('slide-prev', 'slide-next');
     void gridEl.offsetWidth;
