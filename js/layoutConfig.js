@@ -29,7 +29,9 @@ export function normalizeLayoutConfig(raw) {
   const gridRows = clampInt(src.gridRows, 4, 64, DEFAULT_LAYOUT_CONFIG.gridRows);
   const minWidgetCols = clampInt(src.minWidgetCols, 1, gridCols, DEFAULT_LAYOUT_CONFIG.minWidgetCols);
   const minWidgetRows = clampInt(src.minWidgetRows, 1, gridRows, DEFAULT_LAYOUT_CONFIG.minWidgetRows);
-  const maxGridWidth = clampInt(src.maxGridWidth, 640, 10000, DEFAULT_LAYOUT_CONFIG.maxGridWidth);
+  // Always uncapped. Old installs persisted a small maxGridWidth (1360/3840)
+  // that centered the grid and left big side margins — ignore stored value.
+  const maxGridWidth = DEFAULT_LAYOUT_CONFIG.maxGridWidth;
   const dynamic = typeof src.dynamic === 'boolean' ? src.dynamic : DEFAULT_LAYOUT_CONFIG.dynamic;
   const targetCellPx = clampInt(src.targetCellPx, 40, 200, DEFAULT_LAYOUT_CONFIG.targetCellPx);
   // Upper bounds can't fall below the base grid, so defaults always fit.

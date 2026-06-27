@@ -32,67 +32,68 @@ body[data-color-theme="apple-glass"] .dock-inner {
     -webkit-backdrop-filter: blur(32px) saturate(200%);
 }
 
-/* Material UI Light */
+/* Material Design 3 — Light (baseline scheme) */
 body[data-color-theme="material-light"] {
-    --bg: #F5F5F5;
-    --muted: rgba(0, 0, 0, 0.87);
-    --muted-2: rgba(0, 0, 0, 0.6);
-    --muted-3: rgba(0, 0, 0, 0.38);
-    --glass-bg: rgba(255, 255, 255, 0.92);
-    --glass-border: rgba(0, 0, 0, 0.12);
-    --card-shadow: 0 2px 8px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.08);
-    --accent: #6750A4;
-    --accent-2: #03DAC6;
+    --bg: #FEF7FF;                 /* surface */
+    --muted: #1D1B20;             /* on-surface */
+    --muted-2: #49454F;           /* on-surface-variant */
+    --muted-3: #79747E;           /* outline */
+    --glass-bg: #FFFFFF;
+    --glass-border: #CAC4D0;      /* outline-variant */
+    --accent: #6750A4;            /* primary */
+    --accent-2: #7F67BE;
     --accent-rgb: 103, 80, 164;
-    --shadow-1: 0 2px 8px rgba(0,0,0,0.12);
-    --shadow-2: 0 4px 16px rgba(0,0,0,0.16);
-    color: rgba(0,0,0,0.87);
+    --card-radius: 16px;          /* MD3 medium corner */
+    --shadow-1: 0 1px 2px rgba(0,0,0,0.30), 0 1px 3px 1px rgba(0,0,0,0.15);
+    --shadow-2: 0 2px 6px 2px rgba(0,0,0,0.15), 0 1px 2px rgba(0,0,0,0.30);
+    color: #1D1B20;
+    font-family: Roboto, "Segoe UI", system-ui, -apple-system, sans-serif;
 }
 body[data-color-theme="material-light"]:not(.custom-bg) {
-    background: #F5F5F5;
-}
-body[data-color-theme="material-light"] .widget,
-body[data-color-theme="material-light"] .modal-card,
-body[data-color-theme="material-light"] .dock-inner {
-    background: rgba(255,255,255,0.95);
-    border-color: rgba(0,0,0,0.10);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.10);
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    color: rgba(0,0,0,0.87);
+    background: #FEF7FF;
 }
 body[data-color-theme="material-light"] input,
 body[data-color-theme="material-light"] select,
 body[data-color-theme="material-light"] textarea {
-    background: rgba(0,0,0,0.04);
-    border-color: rgba(0,0,0,0.20);
-    color: rgba(0,0,0,0.87);
+    background: #F3EDF7;          /* surface-container */
+    border-color: #79747E;       /* outline */
+    color: #1D1B20;
+    border-radius: 8px;
 }
 body[data-color-theme="material-light"] input::placeholder {
-    color: rgba(0,0,0,0.38);
+    color: #79747E;
 }
 
-/* Material UI Dark */
+/* Material Design 3 — Dark (baseline scheme) */
 body[data-color-theme="material-dark"] {
-    --bg: #121212;
-    --glass-bg: rgba(30, 30, 30, 0.90);
-    --glass-border: rgba(255, 255, 255, 0.10);
-    --accent: #BB86FC;
-    --accent-2: #03DAC6;
-    --accent-rgb: 187, 134, 252;
-    --shadow-1: 0 8px 24px rgba(0,0,0,0.5);
-    --shadow-2: 0 12px 40px rgba(0,0,0,0.6);
+    --bg: #141218;                /* surface */
+    --muted: #E6E0E9;            /* on-surface */
+    --muted-2: #CAC4D0;          /* on-surface-variant */
+    --muted-3: #938F99;          /* outline */
+    --glass-bg: #211F26;         /* surface-container */
+    --glass-border: #49454F;     /* outline-variant */
+    --accent: #D0BCFF;           /* primary */
+    --accent-2: #B69DF8;
+    --accent-rgb: 208, 188, 255;
+    --card-radius: 16px;
+    --shadow-1: 0 1px 3px 1px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.30);
+    --shadow-2: 0 4px 8px 3px rgba(0,0,0,0.45), 0 1px 3px rgba(0,0,0,0.30);
+    color: #E6E0E9;
+    font-family: Roboto, "Segoe UI", system-ui, -apple-system, sans-serif;
 }
 body[data-color-theme="material-dark"]:not(.custom-bg) {
-    background: #121212;
+    background: #141218;
 }
-body[data-color-theme="material-dark"] .widget,
-body[data-color-theme="material-dark"] .modal-card,
-body[data-color-theme="material-dark"] .dock-inner {
-    background: rgba(30,30,30,0.95);
-    border-color: rgba(255,255,255,0.08);
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
+body[data-color-theme="material-dark"] input,
+body[data-color-theme="material-dark"] select,
+body[data-color-theme="material-dark"] textarea {
+    background: #2B2930;         /* surface-container-high */
+    border-color: #938F99;       /* outline */
+    color: #E6E0E9;
+    border-radius: 8px;
+}
+body[data-color-theme="material-dark"] input::placeholder {
+    color: #938F99;
 }
 
 /* ---------- Accent themes ---------- */
@@ -227,7 +228,7 @@ body.app-booting #dock {
 #workspace {
     position: relative;
     height: calc(100% - 120px);
-    padding: 16px 14px 20px 14px;
+    padding: 14px 8px 16px 8px;
     overflow: hidden;
 }
 
@@ -3205,40 +3206,43 @@ body[data-color-theme='apple-glass']:not(.custom-bg) {
     background: linear-gradient(160deg, #1c1c2e 0%, #0d0d1a 100%);
 }
 
-/* Material Light - white card surfaces, light background */
+/* Material Light - MD3 elevated surfaces on a tonal background */
 body[data-color-theme='material-light'] .widget,
 body[data-color-theme='material-light'] .modal-card,
 body[data-color-theme='material-light'] .dock-inner {
-    background: #ffffff !important;
-    border: 1px solid rgba(0, 0, 0, 0.12) !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08) !important;
+    background: #FFFFFF !important;            /* surface-container-lowest */
+    border: 1px solid #E7E0EC !important;      /* faint outline-variant */
+    box-shadow: 0 1px 2px rgba(0,0,0,0.30), 0 1px 3px 1px rgba(0,0,0,0.15) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
-    color: rgba(0,0,0,0.87) !important;
+    color: #1D1B20 !important;
 }
 body[data-color-theme='material-light']:not(.custom-bg) {
-    background: #F0F2F5 !important;
+    background: #FEF7FF !important;            /* surface */
 }
 body[data-color-theme='material-light'] .widget-handle,
 body[data-color-theme='material-light'] .widget-body {
-    color: rgba(0,0,0,0.87);
+    color: #1D1B20;
 }
 body[data-color-theme='material-light'] input,
 body[data-color-theme='material-light'] select,
 body[data-color-theme='material-light'] textarea {
-    background: rgba(0,0,0,0.05) !important;
-    border-color: rgba(0,0,0,0.18) !important;
-    color: rgba(0,0,0,0.87) !important;
+    background: #F3EDF7 !important;            /* surface-container */
+    border-color: #79747E !important;          /* outline */
+    color: #1D1B20 !important;
 }
+/* MD3 buttons are pill-shaped; secondary = tonal (secondary-container) */
 body[data-color-theme='material-light'] .btn-secondary {
-    background: rgba(0,0,0,0.06) !important;
-    border-color: rgba(0,0,0,0.14) !important;
-    color: rgba(0,0,0,0.75) !important;
+    background: #E8DEF8 !important;            /* secondary-container */
+    border-color: transparent !important;
+    color: #1D192B !important;                 /* on-secondary-container */
+    border-radius: 20px !important;
 }
 body[data-color-theme='material-light'] .btn-primary {
-    background: #6750A4 !important;
-    border-color: #6750A4 !important;
-    color: #fff !important;
+    background: #6750A4 !important;            /* primary */
+    border-color: transparent !important;
+    color: #FFFFFF !important;                  /* on-primary */
+    border-radius: 20px !important;
 }
 
 /* Material Light - readability pass: dark-on-light content surfaces.
@@ -3339,22 +3343,82 @@ body[data-color-theme='material-light'] .notes-input {
     color: rgba(0, 0, 0, 0.87);
 }
 
-/* Material Dark - elevated dark surfaces */
+/* Material Dark - MD3 tonal-elevation surfaces */
 body[data-color-theme='material-dark'] .widget,
 body[data-color-theme='material-dark'] .modal-card,
 body[data-color-theme='material-dark'] .dock-inner {
-    background: #1E1E1E !important;
-    border: 1px solid rgba(255,255,255,0.08) !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.5) !important;
+    background: #211F26 !important;            /* surface-container */
+    border: 1px solid #322F38 !important;      /* low-contrast outline */
+    box-shadow: 0 1px 3px 1px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.30) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
+    color: #E6E0E9 !important;
 }
 body[data-color-theme='material-dark']:not(.custom-bg) {
-    background: #121212 !important;
+    background: #141218 !important;            /* surface */
+}
+body[data-color-theme='material-dark'] .widget-handle,
+body[data-color-theme='material-dark'] .widget-body {
+    color: #E6E0E9;
 }
 body[data-color-theme='material-dark'] input,
 body[data-color-theme='material-dark'] select,
 body[data-color-theme='material-dark'] textarea {
-    background: rgba(255,255,255,0.07) !important;
-    border-color: rgba(255,255,255,0.12) !important;
+    background: #2B2930 !important;            /* surface-container-high */
+    border-color: #938F99 !important;          /* outline */
+    color: #E6E0E9 !important;
+}
+/* MD3 buttons: pill-shaped, primary on light-purple, tonal secondary */
+body[data-color-theme='material-dark'] .btn-primary {
+    background: #D0BCFF !important;            /* primary */
+    border-color: transparent !important;
+    color: #381E72 !important;                 /* on-primary */
+    border-radius: 20px !important;
+}
+body[data-color-theme='material-dark'] .btn-secondary {
+    background: #4A4458 !important;            /* secondary-container */
+    border-color: transparent !important;
+    color: #E8DEF8 !important;                 /* on-secondary-container */
+    border-radius: 20px !important;
+}
+/* Content surfaces: tonal containers instead of translucent white */
+body[data-color-theme='material-dark'] .calendar-cell,
+body[data-color-theme='material-dark'] .currency-row,
+body[data-color-theme='material-dark'] .weather-forecast-day,
+body[data-color-theme='material-dark'] .sports-team-row,
+body[data-color-theme='material-dark'] .todo-list li {
+    background: #2B2930;                        /* surface-container-high */
+    border-color: #49454F;                      /* outline-variant */
+    color: #E6E0E9;
+}
+body[data-color-theme='material-dark'] .calendar-cell.empty {
+    background: transparent;
+}
+body[data-color-theme='material-dark'] .calendar-cell.today {
+    background: var(--accent);
+    color: #381E72;
+    font-weight: 700;
+}
+body[data-color-theme='material-dark'] .day-progress-track {
+    background: #49454F;
+}
+body[data-color-theme='material-dark'] .ai-chat-msg.assistant {
+    background: #2B2930;
+    color: #E6E0E9;
+}
+body[data-color-theme='material-dark'] .ai-chat-msg.user {
+    background: #4F378B;                        /* primary-container */
+    color: #EADDFF;                             /* on-primary-container */
+}
+body[data-color-theme='material-dark'] .settings-subsection {
+    background: #1D1B20;                        /* surface-container-low */
+    border-color: #322F38;
+}
+body[data-color-theme='material-dark'] .theme-card {
+    background: #2B2930;
+    border-color: #49454F;
+}
+body[data-color-theme='material-dark'] .theme-card.active {
+    border-color: var(--accent);
+    background: rgba(var(--accent-rgb), 0.16);
 }
