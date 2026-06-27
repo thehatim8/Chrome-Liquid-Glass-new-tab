@@ -1,7 +1,6 @@
 // js/drag.js
 import { computeGrid, posToCell, cellToPos, sizeToCells, findNearestFreeCell, showGridOverlay, hideGridOverlay } from './grid.js';
 import { storage } from './storage.js';
-import { getLayoutConfig } from './layoutConfig.js';
 import { syncResizeOverlays } from './resize.js';
 
 const HOLD_MS        = 170;
@@ -110,9 +109,10 @@ export function makeLongPressDraggable(widgetEl, workspaceEl, id, defaultPos) {
     // Stop all jiggle the moment any widget starts moving — exactly like iOS
     document.body.classList.add('widget-moving');
 
-    const layout = getLayoutConfig();
-    gridNow = computeGrid(workspaceEl, layout.gridCols, layout.gridRows);
-    showGridOverlay(workspaceEl, layout.gridCols, layout.gridRows);
+    // Use the live (dynamic) grid size so dragging snaps to the same cells the
+    // widgets are laid out on, matching wider/taller screens.
+    gridNow = computeGrid(workspaceEl);
+    showGridOverlay(workspaceEl, gridNow.cols, gridNow.rows);
 
     window.addEventListener('pointermove',   onGlobalPointerMove, { passive: false });
     window.addEventListener('pointerup',     onGlobalPointerUp,   { once: true });

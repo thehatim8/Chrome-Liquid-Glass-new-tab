@@ -237,8 +237,9 @@ function attachHandle(handle, dir, widgetEl, workspaceEl, id, overlay) {
       top:  parseFloat(widgetEl.style.top  || 0),
     };
 
-    const layout = getLayoutConfig();
-    gridNow = computeGrid(workspaceEl, layout.gridCols, layout.gridRows);
+    // Use the live (dynamic) grid size so resizing snaps to the same cells the
+    // widgets are actually laid out on, not the fixed base grid.
+    gridNow = computeGrid(workspaceEl);
     showGridOverlay(workspaceEl, gridNow.cols, gridNow.rows);
     widgetEl.classList.add('resizing-active');
     overlay.classList.add('resizing-active');

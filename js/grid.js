@@ -1,26 +1,37 @@
-import { getLayoutConfig } from './layoutConfig.js';
+import { getLayoutConfig, resolveDynamicGridSize } from './layoutConfig.js';
 
-function resolveGridSize(cols, rows) {
+// Resolve the grid's column/row counts. When the caller doesn't force an
+// explicit size, the count is derived from the available workspace so larger
+// screens get more cells (cells stay ~constant px) rather than bigger widgets.
+function resolveGridSize(cols, rows, availableWidth, availableHeight) {
   const cfg = getLayoutConfig();
-  const resolvedCols = Number.isFinite(cols) ? cols : cfg.gridCols;
-  const resolvedRows = Number.isFinite(rows) ? rows : cfg.gridRows;
-  return { cols: resolvedCols, rows: resolvedRows, cfg };
+  if (Number.isFinite(cols) && Number.isFinite(rows)) {
+    return { cols, rows, cfg };
+  }
+  const dyn = resolveDynamicGridSize(availableWidth, availableHeight, cfg);
+  return {
+    cols: Number.isFinite(cols) ? cols : dyn.cols,
+    rows: Number.isFinite(rows) ? rows : dyn.rows,
+    cfg
+  };
 }
 
 // js/grid.js
 export function computeGrid(workspaceEl, cols, rows) {
-  const resolved = resolveGridSize(cols, rows);
   const rect = workspaceEl.getBoundingClientRect();
   const cs = window.getComputedStyle(workspaceEl);
   const padL = parseFloat(cs.paddingLeft || '0') || 0;
   const padR = parseFloat(cs.paddingRight || '0') || 0;
   const padT = parseFloat(cs.paddingTop || '0') || 0;
   const padB = parseFloat(cs.paddingBottom || '0') || 0;
-  const maxGridWidth = resolved.cfg.maxGridWidth;
 
   const availableWidth = Math.max(1, rect.width - padL - padR);
+  const availableHeight = Math.max(1, rect.height - padT - padB);
+  const resolved = resolveGridSize(cols, rows, availableWidth, availableHeight);
+  const maxGridWidth = resolved.cfg.maxGridWidth;
+
   const width = Math.max(1, Math.min(availableWidth, maxGridWidth));
-  const height = Math.max(1, rect.height - padT - padB);
+  const height = availableHeight;
   const left = rect.left + padL + Math.max(0, (availableWidth - width) / 2);
   const top = rect.top + padT;
   const cellW = width / resolved.cols;
