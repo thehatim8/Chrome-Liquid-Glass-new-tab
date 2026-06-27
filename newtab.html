@@ -84,6 +84,7 @@
                 <div class="widget-body ai-chat-body">
                     <div id="aiChatGreeting" class="ai-chat-greeting">
                         <span id="aiChatGreetingText" class="ai-chat-greeting-text"></span>
+                        <span id="aiChatNoKeyHint" class="ai-chat-nokey-hint hidden">Set your OpenRouter API key in Settings → AI Chat</span>
                     </div>
                     <div id="aiChatMessages" class="ai-chat-messages hidden"></div>
                     <div class="ai-chat-compose">
@@ -497,11 +498,6 @@
                                     <input type="file" id="importSettingsFile" accept="application/json">
                                     <button id="importSettings" class="btn-primary" type="button">Import</button>
                                 </div>
-                                <div class="settings-subheading" style="margin-top:16px">Layout</div>
-                                <div class="field-inline">
-                                    <button id="resetPositions" class="btn-secondary" type="button">Reset widget positions</button>
-                                    <button id="enterEditLayout" class="btn-secondary" type="button">Edit Layout</button>
-                                </div>
                             </div>
                         </div>
 
@@ -531,6 +527,10 @@
                 </div><!-- /settings-layout -->
 
                 <footer class="settings-footer">
+                    <div class="settings-footer-left">
+                        <button id="resetPositions" class="btn-secondary" type="button">Reset positions</button>
+                        <button id="enterEditLayout" class="btn-secondary" type="button">Edit Layout</button>
+                    </div>
                     <button id="closeSettings" class="btn-primary" type="button">Close</button>
                 </footer>
 

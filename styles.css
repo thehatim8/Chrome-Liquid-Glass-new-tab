@@ -1007,6 +1007,16 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
     line-height: 1.4;
     transition: opacity 0.28s ease;
 }
+.ai-chat-greeting {
+    flex-direction: column;
+    gap: 4px;
+}
+.ai-chat-nokey-hint {
+    display: block;
+    font-size: clamp(10px, 1.8cqw, 12px);
+    color: var(--muted-3);
+    margin-top: 6px;
+}
 
 .ai-chat-messages.hidden {
     display: none;
@@ -1808,11 +1818,17 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
 .settings-footer {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: space-between;
     gap: 10px;
     padding: 12px 20px;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
     flex-shrink: 0;
+    flex-wrap: wrap;
+}
+.settings-footer-left {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
 .name-prompt-card {
@@ -3112,4 +3128,78 @@ body.edit-layout-mode .widget.dragging .widget-handle {
 .slider-row input[type="range"] {
     width: 100%;
     accent-color: var(--accent);
+}
+
+/* =====================================================
+   COLOR THEME OVERRIDES - placed last so they beat
+   body.glass / body:not(.glass) widget rules above.
+   ===================================================== */
+
+/* Apple Liquid Glass - enhanced blur, iOS blue accent */
+body[data-color-theme='apple-glass'] .widget,
+body[data-color-theme='apple-glass'] .modal-card,
+body[data-color-theme='apple-glass'] .dock-inner {
+    backdrop-filter: blur(40px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(40px) saturate(180%) !important;
+    background: rgba(255, 255, 255, 0.14) !important;
+    border-color: rgba(255, 255, 255, 0.30) !important;
+}
+body[data-color-theme='apple-glass']:not(.custom-bg) {
+    background: linear-gradient(160deg, #1c1c2e 0%, #0d0d1a 100%);
+}
+
+/* Material Light - white card surfaces, light background */
+body[data-color-theme='material-light'] .widget,
+body[data-color-theme='material-light'] .modal-card,
+body[data-color-theme='material-light'] .dock-inner {
+    background: #ffffff !important;
+    border: 1px solid rgba(0, 0, 0, 0.12) !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    color: rgba(0,0,0,0.87) !important;
+}
+body[data-color-theme='material-light']:not(.custom-bg) {
+    background: #F0F2F5 !important;
+}
+body[data-color-theme='material-light'] .widget-handle,
+body[data-color-theme='material-light'] .widget-body {
+    color: rgba(0,0,0,0.87);
+}
+body[data-color-theme='material-light'] input,
+body[data-color-theme='material-light'] select,
+body[data-color-theme='material-light'] textarea {
+    background: rgba(0,0,0,0.05) !important;
+    border-color: rgba(0,0,0,0.18) !important;
+    color: rgba(0,0,0,0.87) !important;
+}
+body[data-color-theme='material-light'] .btn-secondary {
+    background: rgba(0,0,0,0.06) !important;
+    border-color: rgba(0,0,0,0.14) !important;
+    color: rgba(0,0,0,0.75) !important;
+}
+body[data-color-theme='material-light'] .btn-primary {
+    background: #6750A4 !important;
+    border-color: #6750A4 !important;
+    color: #fff !important;
+}
+
+/* Material Dark - elevated dark surfaces */
+body[data-color-theme='material-dark'] .widget,
+body[data-color-theme='material-dark'] .modal-card,
+body[data-color-theme='material-dark'] .dock-inner {
+    background: #1E1E1E !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+body[data-color-theme='material-dark']:not(.custom-bg) {
+    background: #121212 !important;
+}
+body[data-color-theme='material-dark'] input,
+body[data-color-theme='material-dark'] select,
+body[data-color-theme='material-dark'] textarea {
+    background: rgba(255,255,255,0.07) !important;
+    border-color: rgba(255,255,255,0.12) !important;
 }
