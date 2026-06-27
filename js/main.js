@@ -116,34 +116,42 @@ const DEFAULT_UNSPLASH_SETTINGS = {
 };
 const UNSPLASH_THEMES = ['random', 'nature', 'city', 'abstract', 'space', 'minimal', 'mountains', 'ocean'];
 
+// Default layout fills the full 24x12 base grid edge-to-edge (cols 0-23,
+// rows 0-11) so there is no dead space on the sides on a standard display.
 const DEFAULT_POSITIONS = {
-  "widget-search":      { col: 3,  row: 0 },
+  // Top band (rows 0-2)
   "widget-clock":       { col: 0,  row: 0 },
+  "widget-search":      { col: 4,  row: 0 },
+  // Middle band (rows 3-8)
   "widget-todo":        { col: 0,  row: 3 },
-  "widget-image":       { col: 16, row: 7 },
-  "widget-notes":       { col: 16, row: 3 },
-  "widget-aichat":      { col: 12, row: 3 },
   "widget-calendar":    { col: 6,  row: 3 },
+  "widget-aichat":      { col: 12, row: 3 },
+  "widget-notes":       { col: 19, row: 3 },
+  "widget-weather":     { col: 19, row: 6 },
+  // Bottom band (rows 9-11)
   "widget-dayprogress": { col: 0,  row: 9 },
-  "widget-pomodoro":    { col: 12, row: 9 },
-  "widget-sports":      { col: 16, row: 8 },
-  "widget-weather":     { col: 9,  row: 3 },
-  "widget-currency":    { col: 10, row: 8 }
+  "widget-pomodoro":    { col: 5,  row: 9 },
+  "widget-currency":    { col: 10, row: 9 },
+  "widget-sports":      { col: 15, row: 9 },
+  "widget-image":       { col: 20, row: 9 }
 };
 
 const DEFAULT_SPANS = {
-  "widget-search":      { cw: 18, ch: 3 },
-  "widget-clock":       { cw: 3,  ch: 3 },
+  // Top band
+  "widget-clock":       { cw: 4,  ch: 3 },
+  "widget-search":      { cw: 20, ch: 3 },
+  // Middle band
   "widget-todo":        { cw: 6,  ch: 6 },
-  "widget-image":       { cw: 3,  ch: 3 },
-  "widget-notes":       { cw: 6,  ch: 4 },
-  "widget-aichat":      { cw: 9,  ch: 6 },
   "widget-calendar":    { cw: 6,  ch: 6 },
-  "widget-dayprogress": { cw: 9,  ch: 3 },
-  "widget-pomodoro":    { cw: 9,  ch: 3 },
-  "widget-sports":      { cw: 6,  ch: 3 },
-  "widget-weather":     { cw: 6,  ch: 5 },
-  "widget-currency":    { cw: 6,  ch: 4 }
+  "widget-aichat":      { cw: 7,  ch: 6 },
+  "widget-notes":       { cw: 5,  ch: 3 },
+  "widget-weather":     { cw: 5,  ch: 3 },
+  // Bottom band
+  "widget-dayprogress": { cw: 5,  ch: 3 },
+  "widget-pomodoro":    { cw: 5,  ch: 3 },
+  "widget-currency":    { cw: 5,  ch: 3 },
+  "widget-sports":      { cw: 5,  ch: 3 },
+  "widget-image":       { cw: 4,  ch: 3 }
 };
 
 const DEFAULT_VISIBLE_WIDGETS = {
