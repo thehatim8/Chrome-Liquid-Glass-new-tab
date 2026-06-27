@@ -228,7 +228,13 @@ export async function initSettings(appState, options = {}) {
     if (glassDarkness) glassDarkness.value = String(darkness);
     if (glassDarknessValue) glassDarknessValue.textContent = `${darkness}%`;
 
-    const showDarknessSlider = !!appState.settings.glass && appState.settings.glassStyle !== 'light';
+    // Material themes use solid surfaces, so the dark-glass darkness slider
+    // does nothing there — hide it.
+    const ct = appState.settings.colorTheme || 'default';
+    const isMaterial = ct === 'material-dark' || ct === 'material-light';
+    const showDarknessSlider = !!appState.settings.glass
+      && appState.settings.glassStyle !== 'light'
+      && !isMaterial;
     if (glassDarknessRow) glassDarknessRow.classList.toggle('hidden', !showDarknessSlider);
   }
 
@@ -236,6 +242,10 @@ export async function initSettings(appState, options = {}) {
     'aqua', 'aurora', 'sunset', 'neon', 'emerald',
     'rose', 'gold', 'violet', 'ocean', 'mono'
   ];
+  // 'auto' derives a custom accent from the current wallpaper.
+  function normalizeAccent(a) {
+    return (ACCENT_THEMES.includes(a) || a === 'auto') ? a : 'aqua';
+  }
   const COLOR_THEMES = ['default', 'apple-glass', 'material-light', 'material-dark'];
 
   function updateGlassStyleCards() {
@@ -266,11 +276,14 @@ export async function initSettings(appState, options = {}) {
     document.body.classList.toggle('glass', !!appState.settings.glass);
     document.body.classList.toggle('glass-light', appState.settings.glassStyle === 'light');
     updateGlassStyleCards();
-    const accent = ACCENT_THEMES.includes(appState.settings.accentTheme)
-      ? appState.settings.accentTheme
-      : 'aqua';
+    const accent = normalizeAccent(appState.settings.accentTheme);
     appState.settings.accentTheme = accent;
     document.body.dataset.accent = accent;
+    if (accent === 'auto') {
+      applyAutoAccentVars(appState.settings.autoAccent);
+    } else {
+      clearAutoAccentVars();
+    }
     if (accentSwatches) {
       accentSwatches.querySelectorAll('.accent-swatch').forEach((sw) => {
         sw.classList.toggle('active', sw.dataset.accent === accent);
@@ -360,6 +373,78 @@ export async function initSettings(appState, options = {}) {
     return { h: Math.round(h * 360), s, l };
   }
 
+  function hslToRgb(h, s, l) {
+    h = ((h % 360) + 360) % 360 / 360;
+    let r, g, b;
+    if (s === 0) {
+      r = g = b = l;
+    } else {
+      const hue2rgb = (p, q, t) => {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1 / 6) return p + (q - p) * 6 * t;
+        if (t < 1 / 2) return q;
+        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+        return p;
+      };
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p = 2 * l - q;
+      r = hue2rgb(p, q, h + 1 / 3);
+      g = hue2rgb(p, q, h);
+      b = hue2rgb(p, q, h - 1 / 3);
+    }
+    return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
+  }
+
+  // Pick the most vibrant, mid-lightness pixel from the wallpaper.
+  async function extractDominantHsl(src) {
+    return new Promise((resolve) => {
+      if (!src) { resolve(null); return; }
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = 48;
+          canvas.height = 48;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, 48, 48);
+          const { data } = ctx.getImageData(0, 0, 48, 48);
+          let bestScore = 0, best = null;
+          for (let i = 0; i < data.length; i += 4) {
+            const hsl = rgbToHsl(data[i], data[i + 1], data[i + 2]);
+            if (hsl.l <= 0.12 || hsl.l >= 0.9) continue;
+            // Favour saturation and mid lightness for a punchy accent.
+            const score = hsl.s * (1 - Math.abs(hsl.l - 0.5));
+            if (score > bestScore) { bestScore = score; best = hsl; }
+          }
+          resolve(best);
+        } catch (_) { resolve(null); }
+      };
+      img.onerror = () => resolve(null);
+      img.src = typeof src === 'string' && src.startsWith('Images/')
+        ? chrome.runtime.getURL(src)
+        : src;
+    });
+  }
+
+  // Apply a generated accent (from the wallpaper) as inline body variables,
+  // which override both the predefined and color-theme accent definitions.
+  function applyAutoAccentVars(hsl) {
+    if (!hsl) { clearAutoAccentVars(); return; }
+    const s = Math.min(0.92, Math.max(0.5, hsl.s));
+    const c1 = hslToRgb(hsl.h, s, 0.62);
+    const c2 = hslToRgb(hsl.h, s, 0.78);
+    document.body.style.setProperty('--accent', `rgb(${c1.r}, ${c1.g}, ${c1.b})`);
+    document.body.style.setProperty('--accent-2', `rgb(${c2.r}, ${c2.g}, ${c2.b})`);
+    document.body.style.setProperty('--accent-rgb', `${c1.r}, ${c1.g}, ${c1.b}`);
+  }
+  function clearAutoAccentVars() {
+    document.body.style.removeProperty('--accent');
+    document.body.style.removeProperty('--accent-2');
+    document.body.style.removeProperty('--accent-rgb');
+  }
+
   async function extractWallpaperAccent(src) {
     return new Promise((resolve) => {
       const img = new Image();
@@ -400,18 +485,22 @@ export async function initSettings(appState, options = {}) {
     return cur.endsWith(`/${path}`);
   }
 
+  // Only the "Auto" accent follows the wallpaper; fixed accents stay put.
+  async function refreshAutoAccentFor(src) {
+    if (appState.settings.accentTheme !== 'auto') return;
+    const hsl = await extractDominantHsl(src);
+    if (!hsl) return;
+    appState.settings.autoAccent = hsl;
+    applyAutoAccentVars(hsl);
+    await storage.set({ settings: appState.settings });
+  }
+
   async function setBackgroundAndPersist(path) {
     appState.background = path;
     applySettingsLocally();
     await storage.set({ background: appState.background });
     renderWallpaperGrid();
-    // Auto-extract accent color from wallpaper
-    const detectedAccent = await extractWallpaperAccent(path);
-    if (detectedAccent && detectedAccent !== appState.settings.accentTheme) {
-      appState.settings.accentTheme = detectedAccent;
-      applySettingsLocally();
-      await storage.set({ settings: appState.settings });
-    }
+    await refreshAutoAccentFor(path);
   }
 
   function todayLocalStamp() {
@@ -465,6 +554,7 @@ export async function initSettings(appState, options = {}) {
         unsplashSettings: appState.unsplashSettings
       });
       renderWallpaperGrid();
+      await refreshAutoAccentFor(imageUrl);
       return true;
     } catch (err) {
       console.error('settings:unsplash:refresh:error', err);
@@ -1038,7 +1128,7 @@ export async function initSettings(appState, options = {}) {
   appState.settings.glassStyle = appState.settings.glassStyle || 'dark';
   appState.settings.glassDarkness = clampGlassDarkness(appState.settings.glassDarkness);
   updateGlassStyleCards();
-  if (!ACCENT_THEMES.includes(appState.settings.accentTheme)) appState.settings.accentTheme = 'aqua';
+  appState.settings.accentTheme = normalizeAccent(appState.settings.accentTheme);
   if (accentTheme) accentTheme.value = appState.settings.accentTheme;
   if (accentSwatches && !accentSwatches.childElementCount) {
     ACCENT_THEMES.forEach((name) => {
@@ -1055,6 +1145,30 @@ export async function initSettings(appState, options = {}) {
         await storage.set({ settings: appState.settings });
       });
       accentSwatches.appendChild(sw);
+    });
+    // "Auto" swatch — generates the accent from the current wallpaper.
+    const autoSw = document.createElement('button');
+    autoSw.type = 'button';
+    autoSw.className = 'accent-swatch accent-swatch-auto';
+    autoSw.dataset.accent = 'auto';
+    autoSw.title = 'Auto (from wallpaper)';
+    autoSw.setAttribute('aria-label', 'Auto accent from wallpaper');
+    autoSw.addEventListener('click', async () => {
+      appState.settings.accentTheme = 'auto';
+      const hsl = await extractDominantHsl(appState.background);
+      if (hsl) appState.settings.autoAccent = hsl;
+      applySettingsLocally();
+      await storage.set({ settings: appState.settings });
+    });
+    accentSwatches.appendChild(autoSw);
+  }
+  // If Auto is active but we have no stored colour yet, derive one now.
+  if (appState.settings.accentTheme === 'auto' && !appState.settings.autoAccent) {
+    extractDominantHsl(appState.background).then((hsl) => {
+      if (!hsl) return;
+      appState.settings.autoAccent = hsl;
+      applyAutoAccentVars(hsl);
+      storage.set({ settings: appState.settings });
     });
   }
   if (glassDarkness) glassDarkness.value = String(appState.settings.glassDarkness);
@@ -1213,6 +1327,7 @@ export async function initSettings(appState, options = {}) {
       appState.background = uploadedDataUrl;
       applySettingsLocally();
       await storage.set({ background: appState.background });
+      await refreshAutoAccentFor(uploadedDataUrl);
       bgUpload.value = '';
       uploadedDataUrl = null;
       useUploadedBg.disabled = true;
@@ -1228,6 +1343,7 @@ export async function initSettings(appState, options = {}) {
       applySettingsLocally();
       await storage.set({ background: appState.background });
       renderWallpaperGrid();
+      await refreshAutoAccentFor(url);
     });
   }
 

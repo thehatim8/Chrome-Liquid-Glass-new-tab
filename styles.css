@@ -1842,6 +1842,25 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
 .accent-swatch[data-accent="violet"]  { background: linear-gradient(135deg, #8b8cff, #c4b5fd); }
 .accent-swatch[data-accent="ocean"]   { background: linear-gradient(135deg, #38bdf8, #818cf8); }
 .accent-swatch[data-accent="mono"]    { background: linear-gradient(135deg, #e5e7eb, #ffffff); }
+/* Auto: rainbow ring signals "generated from your wallpaper" */
+.accent-swatch-auto {
+    background:
+        radial-gradient(circle at 50% 50%, var(--accent, #61dafb) 0 34%, transparent 36%),
+        conic-gradient(from 0deg, #ff5e9a, #f5c451, #34d399, #38bdf8, #8b8cff, #f637ec, #ff5e9a);
+    position: relative;
+}
+.accent-swatch-auto::after {
+    content: "A";
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 800;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
 
 .help-btn {
     min-height: 0;
@@ -3341,6 +3360,30 @@ body[data-color-theme='material-light'] .theme-card.active {
 /* Notes textarea text */
 body[data-color-theme='material-light'] .notes-input {
     color: rgba(0, 0, 0, 0.87);
+}
+/* Bubble backgrounds behind dock + icon-grid icons (Material Light) */
+body[data-color-theme='material-light'] .dock-item {
+    background: #ECE6F0;            /* surface-container-high */
+    border-radius: 50%;
+    padding: 7px;
+}
+body[data-color-theme='material-light'] .dock-item:hover {
+    background: #E8DEF8;            /* secondary-container */
+}
+body[data-color-theme='material-light'] .dock-add-btn {
+    background: #ECE6F0;
+    border-radius: 50%;
+}
+body[data-color-theme='material-light'] .icon-grid-item {
+    background: #ECE6F0;
+    border-radius: 14px;
+}
+body[data-color-theme='material-light'] .icon-grid-item:hover {
+    background: #E8DEF8;
+}
+body[data-color-theme='material-light'] .icon-grid-item-fallback {
+    background: #D0C4E0;
+    color: #1D192B;
 }
 
 /* Material Dark - MD3 tonal-elevation surfaces */
