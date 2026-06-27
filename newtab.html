@@ -246,14 +246,20 @@
                                 </div>
                                 <label class="toggle-row">
                                     <input type="checkbox" id="toggleGlass">
-                                    <span>Enable Liquid Glass effect</span>
+                                    <span>Enable Theme Effects</span>
                                 </label>
-                                <div class="field">
-                                    <label for="glassStyle">Glass style</label>
-                                    <select id="glassStyle">
-                                        <option value="dark">Dark Glass</option>
-                                        <option value="light">Light Glass</option>
-                                    </select>
+                                <div class="field" id="glassStyleRow">
+                                    <label>Glass style</label>
+                                    <div class="theme-picker glass-style-picker">
+                                        <button class="theme-card glass-style-card" data-glass="dark" type="button">
+                                            <span class="theme-card-preview glass-preview-dark"></span>
+                                            <span>Dark Glass</span>
+                                        </button>
+                                        <button class="theme-card glass-style-card" data-glass="light" type="button">
+                                            <span class="theme-card-preview glass-preview-light"></span>
+                                            <span>Light Glass</span>
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="field">
                                     <label>Accent color</label>

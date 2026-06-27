@@ -141,7 +141,8 @@ export async function initSettings(appState, options = {}) {
   const toggleNotesAutoMath = document.getElementById('toggleNotesAutoMath');
   const settingsUserName = document.getElementById('settingsUserName');
   const saveUserName = document.getElementById('saveUserName');
-  const glassStyle = document.getElementById('glassStyle');
+  const glassStyleRow = document.getElementById('glassStyleRow');
+  const glassStyleCards = document.querySelectorAll('.glass-style-card');
   const accentTheme = document.getElementById('accentTheme');
   const accentSwatches = document.getElementById('accentSwatches');
   const glassDarknessRow = document.getElementById('glassDarknessRow');
@@ -237,12 +238,25 @@ export async function initSettings(appState, options = {}) {
   ];
   const COLOR_THEMES = ['default', 'apple-glass', 'material-light', 'material-dark'];
 
+  function updateGlassStyleCards() {
+    const style = appState.settings.glassStyle === 'light' ? 'light' : 'dark';
+    glassStyleCards.forEach((c) => c.classList.toggle('active', c.dataset.glass === style));
+  }
+
+  // The 3 dedicated themes define their own surfaces, so the glass-style
+  // choice is irrelevant there — hide it unless the Default Glass theme is on.
+  function updateGlassStyleVisibility() {
+    const themed = (appState.settings.colorTheme || 'default') !== 'default';
+    if (glassStyleRow) glassStyleRow.classList.toggle('hidden', themed);
+  }
+
   function applyColorTheme(theme) {
     const t = COLOR_THEMES.includes(theme) ? theme : 'default';
     document.body.dataset.colorTheme = t;
-    document.querySelectorAll('.theme-card').forEach((btn) => {
+    document.querySelectorAll('.theme-card:not(.glass-style-card)').forEach((btn) => {
       btn.classList.toggle('active', btn.dataset.theme === t);
     });
+    updateGlassStyleVisibility();
   }
 
   function applySettingsLocally() {
@@ -251,6 +265,7 @@ export async function initSettings(appState, options = {}) {
 
     document.body.classList.toggle('glass', !!appState.settings.glass);
     document.body.classList.toggle('glass-light', appState.settings.glassStyle === 'light');
+    updateGlassStyleCards();
     const accent = ACCENT_THEMES.includes(appState.settings.accentTheme)
       ? appState.settings.accentTheme
       : 'aqua';
@@ -876,8 +891,8 @@ export async function initSettings(appState, options = {}) {
     });
   }
 
-  // Theme card clicks
-  document.querySelectorAll('.theme-card').forEach((btn) => {
+  // Color theme card clicks (exclude glass-style cards which share the .theme-card look)
+  document.querySelectorAll('.theme-card:not(.glass-style-card)').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const theme = btn.dataset.theme || 'default';
       appState.settings.colorTheme = theme;
@@ -1021,7 +1036,7 @@ export async function initSettings(appState, options = {}) {
   if (settingsUserName) settingsUserName.value = sanitizeUserName(appState.userName || '');
   appState.settings.glassStyle = appState.settings.glassStyle || 'dark';
   appState.settings.glassDarkness = clampGlassDarkness(appState.settings.glassDarkness);
-  if (glassStyle) glassStyle.value = appState.settings.glassStyle;
+  updateGlassStyleCards();
   if (!ACCENT_THEMES.includes(appState.settings.accentTheme)) appState.settings.accentTheme = 'aqua';
   if (accentTheme) accentTheme.value = appState.settings.accentTheme;
   if (accentSwatches && !accentSwatches.childElementCount) {
@@ -1117,13 +1132,13 @@ export async function initSettings(appState, options = {}) {
     });
   }
 
-  if (glassStyle) {
-    glassStyle.addEventListener('change', async (e) => {
-      appState.settings.glassStyle = e.target.value === 'light' ? 'light' : 'dark';
-      await storage.set({ settings: appState.settings });
+  glassStyleCards.forEach((card) => {
+    card.addEventListener('click', async () => {
+      appState.settings.glassStyle = card.dataset.glass === 'light' ? 'light' : 'dark';
       applySettingsLocally();
+      await storage.set({ settings: appState.settings });
     });
-  }
+  });
 
   if (accentTheme) {
     accentTheme.addEventListener('change', async (e) => {
