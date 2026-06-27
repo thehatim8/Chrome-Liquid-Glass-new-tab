@@ -1021,10 +1021,11 @@ export async function initSettings(appState, options = {}) {
   toggleAnalog.checked = !!appState.settings.showAnalog;
 
   // clock style init
+  const CLOCK_FONTS = ['mono', 'thin', 'rounded', 'serif', 'condensed', 'digital'];
   const cs = appState.settings.clockStyle || {};
   if (toggleClockSeconds) toggleClockSeconds.checked = cs.showSeconds !== false;
   if (clockFormat) clockFormat.value = cs.format === '12h' ? '12h' : '24h';
-  if (clockFontFamily) clockFontFamily.value = ['mono', 'thin', 'rounded'].includes(cs.fontFamily) ? cs.fontFamily : 'system';
+  if (clockFontFamily) clockFontFamily.value = CLOCK_FONTS.includes(cs.fontFamily) ? cs.fontFamily : 'system';
   appState.settings.todoAutoReminderMode =
     appState.settings.todoAutoReminderMode === 'always' || appState.settings.todoAutoReminderMode === 'never'
       ? appState.settings.todoAutoReminderMode
@@ -1086,6 +1087,12 @@ export async function initSettings(appState, options = {}) {
 
   toggleAnalog.addEventListener('change', async (e) => {
     appState.settings.showAnalog = !!e.target.checked;
+    const widget = document.getElementById('widget-clock');
+    if (widget) {
+      widget.dispatchEvent(new CustomEvent('clock-restyle', {
+        detail: { ...(appState.settings.clockStyle || {}), showAnalog: appState.settings.showAnalog }
+      }));
+    }
     await storage.set({ settings: appState.settings });
   });
 
@@ -1093,10 +1100,16 @@ export async function initSettings(appState, options = {}) {
     appState.settings.clockStyle = {
       format: clockFormat?.value === '12h' ? '12h' : '24h',
       showSeconds: toggleClockSeconds ? !!toggleClockSeconds.checked : true,
-      fontFamily: ['mono', 'thin', 'rounded'].includes(clockFontFamily?.value) ? clockFontFamily.value : 'system'
+      fontFamily: CLOCK_FONTS.includes(clockFontFamily?.value) ? clockFontFamily.value : 'system'
     };
     const widget = document.getElementById('widget-clock');
-    if (widget) widget.dataset.clockFont = appState.settings.clockStyle.fontFamily;
+    if (widget) {
+      widget.dataset.clockFont = appState.settings.clockStyle.fontFamily;
+      // Apply format/seconds/font live + re-fit, no reload needed.
+      widget.dispatchEvent(new CustomEvent('clock-restyle', {
+        detail: { ...appState.settings.clockStyle, showAnalog: appState.settings.showAnalog }
+      }));
+    }
     await storage.set({ settings: appState.settings });
   }
 

@@ -535,20 +535,29 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
 }
 
 /* ---------- Clock ---------- */
+#widget-clock .widget-body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: stretch;
+    overflow: hidden;
+}
 .clock-digital {
     font-weight: 700;
-    font-size: clamp(20px, 7cqw, 64px);
+    /* Font size is set dynamically in JS to fill the widget (see clock.js). */
+    font-size: 48px;
     text-align: center;
     color: var(--muted);
     letter-spacing: 0.02em;
-    line-height: 1.1;
-    transition: font-size 0.15s ease;
+    line-height: 1.05;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
 }
 
 /* Font family variants */
 #widget-clock[data-clock-font="mono"] .clock-digital {
     font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.04em;
 }
 #widget-clock[data-clock-font="thin"] .clock-digital {
     font-weight: 200;
@@ -557,6 +566,21 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
 #widget-clock[data-clock-font="rounded"] .clock-digital {
     font-family: ui-rounded, "SF Pro Rounded", system-ui, sans-serif;
     font-weight: 800;
+}
+#widget-clock[data-clock-font="serif"] .clock-digital {
+    font-family: Georgia, "Times New Roman", "Noto Serif", serif;
+    font-weight: 700;
+}
+#widget-clock[data-clock-font="condensed"] .clock-digital {
+    font-family: "Arial Narrow", "Roboto Condensed", "Segoe UI", sans-serif;
+    font-weight: 700;
+    font-stretch: condensed;
+    letter-spacing: 0.01em;
+}
+#widget-clock[data-clock-font="digital"] .clock-digital {
+    font-family: "DS-Digital", "SFMono-Regular", Consolas, monospace;
+    font-weight: 700;
+    letter-spacing: 0.12em;
 }
 
 .clock-analog {
@@ -3215,6 +3239,104 @@ body[data-color-theme='material-light'] .btn-primary {
     background: #6750A4 !important;
     border-color: #6750A4 !important;
     color: #fff !important;
+}
+
+/* Material Light - readability pass: dark-on-light content surfaces.
+   Many widget surfaces use translucent-white overlays meant for dark themes,
+   which vanish on white cards. Flip them to translucent-black + dark text. */
+body[data-color-theme='material-light'] .calendar-cell,
+body[data-color-theme='material-light'] .currency-row,
+body[data-color-theme='material-light'] .weather-forecast-day,
+body[data-color-theme='material-light'] .sports-team-row,
+body[data-color-theme='material-light'] .todo-list li {
+    background: rgba(0, 0, 0, 0.045);
+    border-color: rgba(0, 0, 0, 0.12);
+    color: rgba(0, 0, 0, 0.87);
+}
+body[data-color-theme='material-light'] .calendar-cell.empty {
+    background: transparent;
+}
+body[data-color-theme='material-light'] .calendar-cell.today {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 700;
+}
+body[data-color-theme='material-light'] .day-progress-track {
+    background: rgba(0, 0, 0, 0.10);
+}
+body[data-color-theme='material-light'] .search-shortcuts button {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.12);
+    color: rgba(0, 0, 0, 0.72);
+}
+/* AI chat bubbles + code */
+body[data-color-theme='material-light'] .ai-chat-msg.assistant {
+    background: rgba(0, 0, 0, 0.05);
+    color: rgba(0, 0, 0, 0.87);
+}
+body[data-color-theme='material-light'] .ai-chat-msg.user {
+    background: rgba(var(--accent-rgb), 0.16);
+    color: rgba(0, 0, 0, 0.87);
+}
+body[data-color-theme='material-light'] .ai-code-block {
+    background: #f4f2f9;
+    border-color: rgba(0, 0, 0, 0.12);
+}
+body[data-color-theme='material-light'] .ai-code-header {
+    background: rgba(0, 0, 0, 0.05);
+    border-bottom-color: rgba(0, 0, 0, 0.10);
+}
+body[data-color-theme='material-light'] .ai-code-block code,
+body[data-color-theme='material-light'] .ai-code-block pre {
+    color: #1c1b2a;
+}
+body[data-color-theme='material-light'] .ai-inline-code {
+    background: rgba(0, 0, 0, 0.07);
+    border-color: rgba(0, 0, 0, 0.12);
+    color: #3b2f6b;
+}
+/* Settings inner chrome */
+body[data-color-theme='material-light'] .settings-subsection {
+    background: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.10);
+}
+body[data-color-theme='material-light'] .settings-sidebar {
+    border-right-color: rgba(0, 0, 0, 0.10);
+}
+body[data-color-theme='material-light'] .settings-tab {
+    color: rgba(0, 0, 0, 0.62);
+}
+body[data-color-theme='material-light'] .settings-tab:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: rgba(0, 0, 0, 0.87);
+}
+body[data-color-theme='material-light'] .settings-tab.active {
+    background: rgba(var(--accent-rgb), 0.14);
+    color: var(--accent);
+}
+body[data-color-theme='material-light'] .settings-header,
+body[data-color-theme='material-light'] .settings-footer {
+    border-color: rgba(0, 0, 0, 0.10);
+}
+body[data-color-theme='material-light'] .settings-close-x {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.12);
+    color: rgba(0, 0, 0, 0.7);
+}
+/* Theme / glass-style picker cards */
+body[data-color-theme='material-light'] .theme-card {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.12);
+    color: rgba(0, 0, 0, 0.7);
+}
+body[data-color-theme='material-light'] .theme-card.active {
+    border-color: var(--accent);
+    background: rgba(var(--accent-rgb), 0.10);
+    color: rgba(0, 0, 0, 0.87);
+}
+/* Notes textarea text */
+body[data-color-theme='material-light'] .notes-input {
+    color: rgba(0, 0, 0, 0.87);
 }
 
 /* Material Dark - elevated dark surfaces */
