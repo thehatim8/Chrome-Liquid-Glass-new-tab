@@ -129,15 +129,15 @@ export async function initSettings(appState, options = {}) {
   const modal = document.getElementById('settings');
   const open = document.getElementById('openSettings');
   const close = document.getElementById('closeSettings');
-  const openBugReport = document.getElementById('openBugReport');
-  const bugReportModal = document.getElementById('bugReportModal');
-  const closeBugReport = document.getElementById('closeBugReport');
   const submitBugReport = document.getElementById('submitBugReport');
   const bugReportName = document.getElementById('bugReportName');
   const bugReportEmail = document.getElementById('bugReportEmail');
   const bugReportMessage = document.getElementById('bugReportMessage');
   const toggleGlass = document.getElementById('toggleGlass');
   const toggleAnalog = document.getElementById('toggleAnalog');
+  const toggleClockSeconds = document.getElementById('toggleClockSeconds');
+  const clockFormat = document.getElementById('clockFormat');
+  const clockFontFamily = document.getElementById('clockFontFamily');
   const toggleNotesAutoMath = document.getElementById('toggleNotesAutoMath');
   const settingsUserName = document.getElementById('settingsUserName');
   const saveUserName = document.getElementById('saveUserName');
@@ -235,8 +235,20 @@ export async function initSettings(appState, options = {}) {
     'aqua', 'aurora', 'sunset', 'neon', 'emerald',
     'rose', 'gold', 'violet', 'ocean', 'mono'
   ];
+  const COLOR_THEMES = ['default', 'apple-glass', 'material-light', 'material-dark'];
+
+  function applyColorTheme(theme) {
+    const t = COLOR_THEMES.includes(theme) ? theme : 'default';
+    document.body.dataset.colorTheme = t;
+    document.querySelectorAll('.theme-card').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.theme === t);
+    });
+  }
 
   function applySettingsLocally() {
+    const colorTheme = appState.settings.colorTheme || 'default';
+    applyColorTheme(colorTheme);
+
     document.body.classList.toggle('glass', !!appState.settings.glass);
     document.body.classList.toggle('glass-light', appState.settings.glassStyle === 'light');
     const accent = ACCENT_THEMES.includes(appState.settings.accentTheme)
@@ -302,6 +314,70 @@ export async function initSettings(appState, options = {}) {
     return list;
   }
 
+  // Dominant-color → nearest accent theme mapping
+  const ACCENT_HUE_MAP = [
+    { name: 'aqua',    hue: 195 },
+    { name: 'aurora',  hue: 270 },
+    { name: 'sunset',  hue: 20  },
+    { name: 'neon',    hue: 300 },
+    { name: 'emerald', hue: 155 },
+    { name: 'rose',    hue: 350 },
+    { name: 'gold',    hue: 45  },
+    { name: 'violet',  hue: 240 },
+    { name: 'ocean',   hue: 205 },
+    { name: 'mono',    hue: -1  }
+  ];
+
+  function rgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h = 0, s = 0;
+    const l = (max + min) / 2;
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+        case g: h = ((b - r) / d + 2) / 6; break;
+        case b: h = ((r - g) / d + 4) / 6; break;
+      }
+    }
+    return { h: Math.round(h * 360), s, l };
+  }
+
+  async function extractWallpaperAccent(src) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = 40;
+          canvas.height = 40;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, 40, 40);
+          const { data } = ctx.getImageData(0, 0, 40, 40);
+          let bestH = -1, bestS = 0;
+          for (let i = 0; i < data.length; i += 4) {
+            const { h, s, l } = rgbToHsl(data[i], data[i + 1], data[i + 2]);
+            if (s > bestS && l > 0.15 && l < 0.85) { bestS = s; bestH = h; }
+          }
+          if (bestH < 0 || bestS < 0.15) { resolve(null); return; }
+          let nearest = 'aqua', minDiff = Infinity;
+          ACCENT_HUE_MAP.filter(t => t.hue >= 0).forEach(({ name, hue }) => {
+            const diff = Math.min(Math.abs(bestH - hue), 360 - Math.abs(bestH - hue));
+            if (diff < minDiff) { minDiff = diff; nearest = name; }
+          });
+          resolve(nearest);
+        } catch (_) { resolve(null); }
+      };
+      img.onerror = () => resolve(null);
+      img.src = typeof src === 'string' && src.startsWith('Images/')
+        ? chrome.runtime.getURL(src)
+        : src;
+    });
+  }
+
   function isWallpaperActive(path) {
     const cur = String(appState.background || '');
     if (!cur) return false;
@@ -314,6 +390,13 @@ export async function initSettings(appState, options = {}) {
     applySettingsLocally();
     await storage.set({ background: appState.background });
     renderWallpaperGrid();
+    // Auto-extract accent color from wallpaper
+    const detectedAccent = await extractWallpaperAccent(path);
+    if (detectedAccent && detectedAccent !== appState.settings.accentTheme) {
+      appState.settings.accentTheme = detectedAccent;
+      applySettingsLocally();
+      await storage.set({ settings: appState.settings });
+    }
   }
 
   function todayLocalStamp() {
@@ -793,8 +876,28 @@ export async function initSettings(appState, options = {}) {
     });
   }
 
+  // Theme card clicks
+  document.querySelectorAll('.theme-card').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const theme = btn.dataset.theme || 'default';
+      appState.settings.colorTheme = theme;
+      applySettingsLocally();
+      await storage.set({ settings: appState.settings });
+    });
+  });
+
+  // Sidebar tab switching
+  function activateTab(tabName) {
+    document.querySelectorAll('.settings-tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === tabName));
+    document.querySelectorAll('.settings-panel').forEach((p) => p.classList.toggle('active', p.dataset.panel === tabName));
+  }
+  document.querySelectorAll('.settings-tab').forEach((tab) => {
+    tab.addEventListener('click', () => activateTab(tab.dataset.tab));
+  });
+
   open.addEventListener('click', () => {
     renderWidgetVisibility();
+    applyColorTheme(appState.settings.colorTheme || 'default');
     modal.classList.remove('hidden');
     setTimeout(() => modal.querySelector('input,button')?.focus(), 60);
 
@@ -856,28 +959,12 @@ export async function initSettings(appState, options = {}) {
     if (bugReportMessage) bugReportMessage.value = '';
   }
 
-  if (openBugReport && bugReportModal) {
-    openBugReport.addEventListener('click', () => {
-      modal.classList.add('hidden');
-      bugReportModal.classList.remove('hidden');
-      if (bugReportName && !bugReportName.value) {
-        bugReportName.value = (appState.userName || '').trim();
-      }
-      setTimeout(() => bugReportMessage?.focus(), 40);
+  // Pre-fill name when navigating to Legal tab
+  document.querySelectorAll('.settings-tab[data-tab="legal"]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (bugReportName && !bugReportName.value) bugReportName.value = (appState.userName || '').trim();
     });
-  }
-
-  if (closeBugReport && bugReportModal) {
-    closeBugReport.addEventListener('click', () => {
-      bugReportModal.classList.add('hidden');
-      resetBugReportForm();
-    });
-    bugReportModal.addEventListener('mousedown', (e) => {
-      if (e.target !== bugReportModal) return;
-      bugReportModal.classList.add('hidden');
-      resetBugReportForm();
-    });
-  }
+  });
 
   if (submitBugReport) {
     submitBugReport.addEventListener('click', async () => {
@@ -907,8 +994,6 @@ export async function initSettings(appState, options = {}) {
           throw new Error(payload?.message || `HTTP ${res.status}`);
         }
         alert('Bug report submitted. Thank you.');
-
-        bugReportModal?.classList.add('hidden');
         resetBugReportForm();
       } catch (err) {
         console.error('bug-report:submit:error', err);
@@ -919,6 +1004,12 @@ export async function initSettings(appState, options = {}) {
 
   toggleGlass.checked = !!appState.settings.glass;
   toggleAnalog.checked = !!appState.settings.showAnalog;
+
+  // clock style init
+  const cs = appState.settings.clockStyle || {};
+  if (toggleClockSeconds) toggleClockSeconds.checked = cs.showSeconds !== false;
+  if (clockFormat) clockFormat.value = cs.format === '12h' ? '12h' : '24h';
+  if (clockFontFamily) clockFontFamily.value = ['mono', 'thin', 'rounded'].includes(cs.fontFamily) ? cs.fontFamily : 'system';
   appState.settings.todoAutoReminderMode =
     appState.settings.todoAutoReminderMode === 'always' || appState.settings.todoAutoReminderMode === 'never'
       ? appState.settings.todoAutoReminderMode
@@ -982,6 +1073,21 @@ export async function initSettings(appState, options = {}) {
     appState.settings.showAnalog = !!e.target.checked;
     await storage.set({ settings: appState.settings });
   });
+
+  async function saveClockStyle() {
+    appState.settings.clockStyle = {
+      format: clockFormat?.value === '12h' ? '12h' : '24h',
+      showSeconds: toggleClockSeconds ? !!toggleClockSeconds.checked : true,
+      fontFamily: ['mono', 'thin', 'rounded'].includes(clockFontFamily?.value) ? clockFontFamily.value : 'system'
+    };
+    const widget = document.getElementById('widget-clock');
+    if (widget) widget.dataset.clockFont = appState.settings.clockStyle.fontFamily;
+    await storage.set({ settings: appState.settings });
+  }
+
+  if (toggleClockSeconds) toggleClockSeconds.addEventListener('change', saveClockStyle);
+  if (clockFormat) clockFormat.addEventListener('change', saveClockStyle);
+  if (clockFontFamily) clockFontFamily.addEventListener('change', saveClockStyle);
 
   if (toggleNotesAutoMath) {
     toggleNotesAutoMath.addEventListener('change', async (e) => {

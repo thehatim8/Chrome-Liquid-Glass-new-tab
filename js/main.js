@@ -48,7 +48,8 @@ const DEFAULT_SETTINGS = {
   glassStyle: 'dark',
   glassDarkness: 68,
   accentTheme: 'aqua',
-  todoAutoReminderMode: 'ask'
+  todoAutoReminderMode: 'ask',
+  clockStyle: { format: '24h', showSeconds: true, fontFamily: 'system' }
 };
 const DEFAULT_DOCK_ITEMS = [
   {
@@ -116,33 +117,33 @@ const DEFAULT_UNSPLASH_SETTINGS = {
 const UNSPLASH_THEMES = ['random', 'nature', 'city', 'abstract', 'space', 'minimal', 'mountains', 'ocean'];
 
 const DEFAULT_POSITIONS = {
-  "widget-search": { col: 2, row: 0 },
-  "widget-clock": { col: 0, row: 0 },
-  "widget-todo": { col: 0, row: 2 },
-  "widget-image": { col: 10, row: 5 },
-  "widget-notes": { col: 10, row: 2 },
-  "widget-aichat": { col: 8, row: 2 },
-  "widget-calendar": { col: 4, row: 2 },
-  "widget-dayprogress": { col: 0, row: 7 },
-  "widget-pomodoro": { col: 8, row: 7 },
-  "widget-sports": { col: 10, row: 6 },
-  "widget-weather": { col: 6, row: 2 },
-  "widget-currency": { col: 7, row: 6 }
+  "widget-search":      { col: 3,  row: 0 },
+  "widget-clock":       { col: 0,  row: 0 },
+  "widget-todo":        { col: 0,  row: 3 },
+  "widget-image":       { col: 16, row: 7 },
+  "widget-notes":       { col: 16, row: 3 },
+  "widget-aichat":      { col: 12, row: 3 },
+  "widget-calendar":    { col: 6,  row: 3 },
+  "widget-dayprogress": { col: 0,  row: 9 },
+  "widget-pomodoro":    { col: 12, row: 9 },
+  "widget-sports":      { col: 16, row: 8 },
+  "widget-weather":     { col: 9,  row: 3 },
+  "widget-currency":    { col: 10, row: 8 }
 };
 
 const DEFAULT_SPANS = {
-  "widget-search": { cw: 12, ch: 2 },
-  "widget-clock": { cw: 2, ch: 2 },
-  "widget-todo": { cw: 4, ch: 5 },
-  "widget-image": { cw: 2, ch: 2 },
-  "widget-notes": { cw: 4, ch: 3 },
-  "widget-aichat": { cw: 6, ch: 4 },
-  "widget-calendar": { cw: 6, ch: 5 },
-  "widget-dayprogress": { cw: 6, ch: 2 },
-  "widget-pomodoro": { cw: 6, ch: 2 },
-  "widget-sports": { cw: 4, ch: 2 },
-  "widget-weather": { cw: 4, ch: 4 },
-  "widget-currency": { cw: 4, ch: 3 }
+  "widget-search":      { cw: 18, ch: 3 },
+  "widget-clock":       { cw: 3,  ch: 3 },
+  "widget-todo":        { cw: 6,  ch: 6 },
+  "widget-image":       { cw: 3,  ch: 3 },
+  "widget-notes":       { cw: 6,  ch: 4 },
+  "widget-aichat":      { cw: 9,  ch: 6 },
+  "widget-calendar":    { cw: 6,  ch: 6 },
+  "widget-dayprogress": { cw: 9,  ch: 3 },
+  "widget-pomodoro":    { cw: 9,  ch: 3 },
+  "widget-sports":      { cw: 6,  ch: 3 },
+  "widget-weather":     { cw: 6,  ch: 5 },
+  "widget-currency":    { cw: 6,  ch: 4 }
 };
 
 const DEFAULT_VISIBLE_WIDGETS = {
@@ -531,6 +532,7 @@ async function bootstrap() {
   if ((settings.glassStyle || 'dark') === 'light') document.body.classList.add('glass-light');
   else document.body.classList.remove('glass-light');
   document.body.dataset.accent = settings.accentTheme || 'aqua';
+  document.body.dataset.colorTheme = settings.colorTheme || 'default';
   const settingsIconImg = document.querySelector('#openSettings img');
   if (settingsIconImg) {
     const useBlackIcon = !!settings.glass && (settings.glassStyle || 'dark') === 'light';

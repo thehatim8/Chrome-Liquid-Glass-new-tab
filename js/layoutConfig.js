@@ -1,9 +1,9 @@
 const DEFAULT_LAYOUT_CONFIG = {
-  gridCols: 16,
-  gridRows: 9,
+  gridCols: 24,
+  gridRows: 12,
   minWidgetCols: 2,
   minWidgetRows: 2,
-  maxGridWidth: 1360
+  maxGridWidth: 3840
 };
 
 function clampInt(value, min, max, fallback) {

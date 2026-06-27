@@ -15,6 +15,86 @@
     --glass-darkness: 68;
 }
 
+/* ---------- Color themes ---------- */
+/* Apple Liquid Glass */
+body[data-color-theme="apple-glass"] {
+    --bg: #1c1c1e;
+    --glass-bg: rgba(255, 255, 255, 0.14);
+    --glass-border: rgba(255, 255, 255, 0.32);
+    --accent: #007AFF;
+    --accent-2: #30D0FB;
+    --accent-rgb: 0, 122, 255;
+}
+body[data-color-theme="apple-glass"] .widget,
+body[data-color-theme="apple-glass"] .modal-card,
+body[data-color-theme="apple-glass"] .dock-inner {
+    backdrop-filter: blur(32px) saturate(200%);
+    -webkit-backdrop-filter: blur(32px) saturate(200%);
+}
+
+/* Material UI Light */
+body[data-color-theme="material-light"] {
+    --bg: #F5F5F5;
+    --muted: rgba(0, 0, 0, 0.87);
+    --muted-2: rgba(0, 0, 0, 0.6);
+    --muted-3: rgba(0, 0, 0, 0.38);
+    --glass-bg: rgba(255, 255, 255, 0.92);
+    --glass-border: rgba(0, 0, 0, 0.12);
+    --card-shadow: 0 2px 8px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.08);
+    --accent: #6750A4;
+    --accent-2: #03DAC6;
+    --accent-rgb: 103, 80, 164;
+    --shadow-1: 0 2px 8px rgba(0,0,0,0.12);
+    --shadow-2: 0 4px 16px rgba(0,0,0,0.16);
+    color: rgba(0,0,0,0.87);
+}
+body[data-color-theme="material-light"]:not(.custom-bg) {
+    background: #F5F5F5;
+}
+body[data-color-theme="material-light"] .widget,
+body[data-color-theme="material-light"] .modal-card,
+body[data-color-theme="material-light"] .dock-inner {
+    background: rgba(255,255,255,0.95);
+    border-color: rgba(0,0,0,0.10);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    color: rgba(0,0,0,0.87);
+}
+body[data-color-theme="material-light"] input,
+body[data-color-theme="material-light"] select,
+body[data-color-theme="material-light"] textarea {
+    background: rgba(0,0,0,0.04);
+    border-color: rgba(0,0,0,0.20);
+    color: rgba(0,0,0,0.87);
+}
+body[data-color-theme="material-light"] input::placeholder {
+    color: rgba(0,0,0,0.38);
+}
+
+/* Material UI Dark */
+body[data-color-theme="material-dark"] {
+    --bg: #121212;
+    --glass-bg: rgba(30, 30, 30, 0.90);
+    --glass-border: rgba(255, 255, 255, 0.10);
+    --accent: #BB86FC;
+    --accent-2: #03DAC6;
+    --accent-rgb: 187, 134, 252;
+    --shadow-1: 0 8px 24px rgba(0,0,0,0.5);
+    --shadow-2: 0 12px 40px rgba(0,0,0,0.6);
+}
+body[data-color-theme="material-dark"]:not(.custom-bg) {
+    background: #121212;
+}
+body[data-color-theme="material-dark"] .widget,
+body[data-color-theme="material-dark"] .modal-card,
+body[data-color-theme="material-dark"] .dock-inner {
+    background: rgba(30,30,30,0.95);
+    border-color: rgba(255,255,255,0.08);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
 /* ---------- Accent themes ---------- */
 /* Each theme just re-points the accent variables; the rest of the UI reads them. */
 body[data-accent="aqua"] {
@@ -457,14 +537,31 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
 /* ---------- Clock ---------- */
 .clock-digital {
     font-weight: 700;
-    font-size: 26px;
+    font-size: clamp(20px, 7cqw, 64px);
     text-align: center;
     color: var(--muted);
+    letter-spacing: 0.02em;
+    line-height: 1.1;
+    transition: font-size 0.15s ease;
+}
+
+/* Font family variants */
+#widget-clock[data-clock-font="mono"] .clock-digital {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    letter-spacing: 0.06em;
+}
+#widget-clock[data-clock-font="thin"] .clock-digital {
+    font-weight: 200;
+    letter-spacing: 0.08em;
+}
+#widget-clock[data-clock-font="rounded"] .clock-digital {
+    font-family: ui-rounded, "SF Pro Rounded", system-ui, sans-serif;
+    font-weight: 800;
 }
 
 .clock-analog {
     width: 100%;
-    height: 80px;
+    height: clamp(60px, 20cqh, 120px);
     margin-top: 6px;
 }
 
@@ -806,7 +903,7 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
 }
 
 .calendar-day-name {
-    font-size: 11px;
+    font-size: clamp(9px, 1.5cqw, 12px);
     color: var(--muted-3);
     text-align: center;
     padding: 2px 0;
@@ -815,8 +912,8 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
 .calendar-cell {
     border-radius: 7px;
     text-align: center;
-    font-size: 12px;
-    padding: 6px 0;
+    font-size: clamp(10px, 1.8cqw, 14px);
+    padding: clamp(3px, 0.8cqh, 8px) 0;
     background: rgba(255, 255, 255, 0.03);
 }
 
@@ -831,7 +928,7 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
 }
 
 .day-progress-pct {
-    font-size: 28px;
+    font-size: clamp(20px, 6cqw, 40px);
     font-weight: 800;
     margin-bottom: 8px;
 }
@@ -857,7 +954,7 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
 }
 
 .pomodoro-time {
-    font-size: 34px;
+    font-size: clamp(28px, 8cqw, 54px);
     font-weight: 800;
     text-align: center;
     line-height: 1;
@@ -887,6 +984,32 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
     gap: 8px;
     height: 100%;
     overflow: hidden;
+}
+
+.ai-chat-greeting {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 12px;
+    text-align: center;
+    min-height: 0;
+}
+
+.ai-chat-greeting.hidden {
+    display: none;
+}
+
+.ai-chat-greeting-text {
+    font-size: clamp(14px, 3cqw, 20px);
+    font-weight: 600;
+    color: var(--muted-2);
+    line-height: 1.4;
+    transition: opacity 0.28s ease;
+}
+
+.ai-chat-messages.hidden {
+    display: none;
 }
 
 .ai-chat-messages {
@@ -1310,12 +1433,12 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
    SETTINGS — redesigned card layout (sticky header/footer + grid)
    ============================================================ */
 #settings .settings-card {
-    width: min(960px, calc(100vw - 28px));
-    max-height: calc(100vh - 28px);
+    width: min(860px, calc(100vw - 28px));
+    height: min(640px, calc(100vh - 28px));
     padding: 0;
     display: flex;
     flex-direction: column;
-    overflow: hidden;          /* the body scrolls, not the whole card */
+    overflow: hidden;
 }
 
 .settings-header {
@@ -1354,46 +1477,140 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
     color: var(--muted);
 }
 
-.settings-body {
+/* ── Settings sidebar + tab layout ────────────────────── */
+.settings-layout {
+    display: flex;
     flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.settings-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 130px;
+    flex-shrink: 0;
+    padding: 10px 8px;
+    border-right: 1px solid rgba(255,255,255,0.08);
+    overflow-y: auto;
+    scrollbar-width: none;
+}
+.settings-sidebar::-webkit-scrollbar { display: none; }
+
+.settings-tab {
+    width: 100%;
+    text-align: left;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 0;
+    background: transparent;
+    color: var(--muted-2);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    min-height: 0;
+    transition: background 0.12s ease, color 0.12s ease;
+    line-height: 1.3;
+}
+.settings-tab:hover {
+    background: rgba(255,255,255,0.06);
+    color: var(--muted);
+}
+.settings-tab.active {
+    background: rgba(var(--accent-rgb), 0.14);
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.settings-panels {
+    flex: 1;
+    min-width: 0;
     overflow-y: auto;
     overflow-x: hidden;
     padding: 16px 20px;
     scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.14) transparent;
 }
-.settings-body::-webkit-scrollbar { width: 8px; }
-.settings-body::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.14);
+.settings-panels::-webkit-scrollbar { width: 6px; }
+.settings-panels::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.14);
     border-radius: 8px;
 }
 
-/* Masonry-style packing so short cards don't leave large empty gaps. */
-.settings-grid {
-    column-width: 300px;
-    column-gap: 14px;
+.settings-panel {
+    display: none;
+    flex-direction: column;
+    gap: 0;
 }
-.settings-section {
-    background: rgba(255, 255, 255, 0.035);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
-    padding: 14px 16px;
-    min-width: 0;
-    margin: 0 0 14px;
-    break-inside: avoid;
-    -webkit-column-break-inside: avoid;
-    page-break-inside: avoid;
+.settings-panel.active {
+    display: flex;
 }
-.settings-section.hidden { display: none; }
-.settings-section--wide {
-    column-span: all;
-    -webkit-column-span: all;
-}
-.settings-section-title {
-    margin: 0 0 12px;
-    font-size: 14px;
+
+.settings-subheading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 13px;
     font-weight: 700;
-    letter-spacing: 0.02em;
+    color: var(--muted-3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 14px 0 8px;
+}
+.settings-subheading:first-child { margin-top: 0; }
+
+.subheading-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+}
+
+.settings-subsection {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.07);
+    margin-bottom: 2px;
+}
+.settings-subsection.hidden { display: none; }
+
+.settings-hint {
+    font-size: 12px;
+    color: var(--muted-3);
+    line-height: 1.5;
+    margin: 0;
+}
+
+.settings-field-label {
+    font-size: 13px;
     color: inherit;
+    opacity: 0.8;
+    display: block;
+    margin-bottom: 6px;
+}
+
+.bug-report-inline {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Legacy section classes used by some helpers — keep them non-breaking */
+.settings-section { display: contents; }
+.settings-section.hidden { display: none; }
+.settings-section-head-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 .settings-section-head {
     display: flex;
@@ -1404,16 +1621,31 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
     flex-wrap: wrap;
 }
 .settings-section-head .settings-section-title { margin: 0; }
-.settings-section-head-actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
+.settings-section-title {
+    margin: 0 0 12px;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: inherit;
 }
 
 .settings-fields {
     display: flex;
     flex-direction: column;
     gap: 12px;
+}
+.settings-fields textarea {
+    resize: vertical;
+    min-height: 64px;
+    width: 100%;
+}
+.settings-fields small {
+    opacity: 0.7;
+    font-size: 12px;
+    line-height: 1.4;
+}
+.settings-panel .settings-fields {
+    gap: 14px;
 }
 .field {
     display: flex;
@@ -1467,6 +1699,47 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
     font-size: 12px;
     line-height: 1.4;
 }
+
+/* ---------- Color theme picker ---------- */
+.theme-picker {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+.theme-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 2px solid rgba(255,255,255,0.10);
+    background: rgba(255,255,255,0.04);
+    cursor: pointer;
+    font-size: 11px;
+    color: var(--muted-2);
+    min-height: 0;
+    transition: border-color 0.15s ease, background 0.15s ease;
+    flex: 1;
+    min-width: 72px;
+}
+.theme-card:hover { border-color: rgba(255,255,255,0.24); }
+.theme-card.active {
+    border-color: var(--accent);
+    background: rgba(var(--accent-rgb), 0.10);
+    color: var(--muted);
+}
+.theme-card-preview {
+    width: 40px;
+    height: 28px;
+    border-radius: 6px;
+    display: block;
+}
+.theme-preview-default { background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 100%); border: 1px solid rgba(255,255,255,0.16); }
+.theme-preview-apple   { background: linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(200,220,255,0.18) 100%); border: 1px solid rgba(255,255,255,0.30); }
+.theme-preview-matlight { background: linear-gradient(135deg, #fff 0%, #e8e0f0 100%); border: 1px solid rgba(0,0,0,0.12); }
+.theme-preview-matdark  { background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%); border: 1px solid rgba(255,255,255,0.10); }
 
 /* ---------- Accent theme swatches ---------- */
 .accent-swatches {
@@ -1535,17 +1808,11 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
 .settings-footer {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: 10px;
-    padding: 14px 20px;
-    border-top: 1px solid rgba(255, 255, 255, 0.10);
+    padding: 12px 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
     flex-shrink: 0;
-    flex-wrap: wrap;
-}
-.settings-footer-left {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
 }
 
 .name-prompt-card {
@@ -1944,10 +2211,24 @@ body.glass.glass-light .modal-card {
     border: 1px solid rgba(255, 255, 255, 0.85);
 }
 
-/* Light-glass: settings section cards & dividers need darker contrast */
-body.glass.glass-light .settings-section {
-    background: rgba(255, 255, 255, 0.45);
-    border-color: rgba(21, 39, 65, 0.14);
+/* Light-glass: settings sidebar/panels need darker contrast */
+body.glass.glass-light .settings-sidebar {
+    border-right-color: rgba(21, 39, 65, 0.14);
+}
+body.glass.glass-light .settings-tab {
+    color: rgba(10,26,50,0.65);
+}
+body.glass.glass-light .settings-tab:hover {
+    background: rgba(0,0,0,0.06);
+    color: rgba(10,26,50,0.87);
+}
+body.glass.glass-light .settings-tab.active {
+    background: rgba(var(--accent-rgb), 0.14);
+    color: var(--accent);
+}
+body.glass.glass-light .settings-subsection {
+    background: rgba(255,255,255,0.40);
+    border-color: rgba(21,39,65,0.14);
 }
 body.glass.glass-light .settings-header,
 body.glass.glass-light .bg-unsplash {
@@ -2414,6 +2695,33 @@ input:focus {
     .icon-grid-config-row {
         grid-template-columns: 1fr;
     }
+
+    #settings .settings-card {
+        width: calc(100vw - 20px);
+        height: calc(100vh - 28px);
+    }
+
+    .settings-sidebar {
+        width: 90px;
+    }
+
+    .settings-tab {
+        font-size: 11px;
+        padding: 6px 8px;
+    }
+}
+
+@media (max-width: 560px) {
+    .settings-sidebar {
+        width: 70px;
+    }
+    .settings-tab {
+        font-size: 10px;
+        padding: 5px 6px;
+    }
+    .theme-picker {
+        flex-direction: column;
+    }
 }
 
 /* ---------- Utility classes ---------- */
@@ -2697,7 +3005,7 @@ body.edit-layout-mode .widget.dragging .widget-handle {
     object-fit: contain;
 }
 .weather-temp {
-    font-size: 30px;
+    font-size: clamp(22px, 6cqw, 42px);
     font-weight: 700;
     color: var(--muted);
     line-height: 1;
