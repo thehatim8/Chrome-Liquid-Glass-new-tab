@@ -1283,20 +1283,23 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
     position: fixed;
     left: 50%;
     transform: translateX(-50%);
-    bottom: 18px;
+    bottom: var(--dock-bottom, 18px);
     z-index: 999;
     pointer-events: all;
     width: auto;
     overflow: visible;
 }
+.dock.dock-hidden {
+    display: none;
+}
 
 .dock-inner {
     display: flex;
-    gap: 12px;
+    gap: var(--dock-gap, 12px);
     padding: 10px 14px;
     border-radius: 30px;
     align-items: center;
-    background: rgba(0, 0, 0, 0.18);
+    background: rgba(0, 0, 0, var(--dock-bg-alpha, 0.18));
     backdrop-filter: blur(6px) saturate(120%);
     box-shadow: 0 12px 40px rgba(2, 6, 23, 0.7);
     overflow: visible;
@@ -1403,8 +1406,8 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
 }
 
 .dock-item-icon {
-    width: 28px;
-    height: 28px;
+    width: var(--dock-icon-size, 28px);
+    height: var(--dock-icon-size, 28px);
     border-radius: 8px;
     object-fit: cover;
     display: block;

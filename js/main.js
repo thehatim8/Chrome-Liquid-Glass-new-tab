@@ -49,7 +49,8 @@ const DEFAULT_SETTINGS = {
   glassDarkness: 68,
   accentTheme: 'aqua',
   todoAutoReminderMode: 'ask',
-  clockStyle: { format: '24h', showSeconds: true, fontFamily: 'system' }
+  clockStyle: { format: '24h', showSeconds: true, fontFamily: 'system' },
+  dockStyle: { iconSize: 28, bottomGap: 18, iconGap: 12, bgOpacity: 18, hidden: false }
 };
 const DEFAULT_DOCK_ITEMS = [
   {
@@ -536,6 +537,19 @@ async function bootstrap() {
     ? Math.max(0, Math.min(100, Math.round(Number(settings.glassDarkness))))
     : 68;
   document.documentElement.style.setProperty('--glass-darkness', String(glassDarkness));
+  // apply dock styling early so the dock doesn't flash at default size
+  const clampNum = (v, lo, hi, fb) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : fb;
+  };
+  const ds = settings.dockStyle || {};
+  const rootStyle = document.documentElement.style;
+  rootStyle.setProperty('--dock-icon-size', `${clampNum(ds.iconSize, 18, 52, 28)}px`);
+  rootStyle.setProperty('--dock-bottom', `${clampNum(ds.bottomGap, 0, 90, 18)}px`);
+  rootStyle.setProperty('--dock-gap', `${clampNum(ds.iconGap, 2, 30, 12)}px`);
+  rootStyle.setProperty('--dock-bg-alpha', String(clampNum(ds.bgOpacity, 0, 100, 18) / 100));
+  const dockEl = document.getElementById('dock');
+  if (dockEl) dockEl.classList.toggle('dock-hidden', !!ds.hidden);
   if (settings.glass) document.body.classList.add('glass');
   if ((settings.glassStyle || 'dark') === 'light') document.body.classList.add('glass-light');
   else document.body.classList.remove('glass-light');

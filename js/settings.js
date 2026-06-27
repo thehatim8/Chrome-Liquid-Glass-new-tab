@@ -148,6 +148,15 @@ export async function initSettings(appState, options = {}) {
   const glassDarknessRow = document.getElementById('glassDarknessRow');
   const glassDarkness = document.getElementById('glassDarkness');
   const glassDarknessValue = document.getElementById('glassDarknessValue');
+  const dockIconSize = document.getElementById('dockIconSize');
+  const dockIconSizeValue = document.getElementById('dockIconSizeValue');
+  const dockBottomGap = document.getElementById('dockBottomGap');
+  const dockBottomGapValue = document.getElementById('dockBottomGapValue');
+  const dockIconGap = document.getElementById('dockIconGap');
+  const dockIconGapValue = document.getElementById('dockIconGapValue');
+  const dockBgOpacity = document.getElementById('dockBgOpacity');
+  const dockBgOpacityValue = document.getElementById('dockBgOpacityValue');
+  const toggleDockHidden = document.getElementById('toggleDockHidden');
   const resetPositions = document.getElementById('resetPositions');
   const bgUpload = document.getElementById('bgUpload');
   const useUploadedBg = document.getElementById('useUploadedBg');
@@ -1230,6 +1239,66 @@ export async function initSettings(appState, options = {}) {
   if (toggleClockSeconds) toggleClockSeconds.addEventListener('change', saveClockStyle);
   if (clockFormat) clockFormat.addEventListener('change', saveClockStyle);
   if (clockFontFamily) clockFontFamily.addEventListener('change', saveClockStyle);
+
+  // ---- Dock customization ----
+  function normalizeDockStyle(s) {
+    const d = (s && typeof s === 'object') ? s : {};
+    const clamp = (v, lo, hi, fb) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? Math.max(lo, Math.min(hi, Math.round(n))) : fb;
+    };
+    return {
+      iconSize: clamp(d.iconSize, 18, 52, 28),
+      bottomGap: clamp(d.bottomGap, 0, 90, 18),
+      iconGap: clamp(d.iconGap, 2, 30, 12),
+      bgOpacity: clamp(d.bgOpacity, 0, 100, 18),
+      hidden: !!d.hidden
+    };
+  }
+
+  function applyDockStyle() {
+    const d = normalizeDockStyle(appState.settings.dockStyle);
+    appState.settings.dockStyle = d;
+    const root = document.documentElement.style;
+    root.setProperty('--dock-icon-size', `${d.iconSize}px`);
+    root.setProperty('--dock-bottom', `${d.bottomGap}px`);
+    root.setProperty('--dock-gap', `${d.iconGap}px`);
+    root.setProperty('--dock-bg-alpha', String(d.bgOpacity / 100));
+    const dockEl = document.getElementById('dock');
+    if (dockEl) dockEl.classList.toggle('dock-hidden', d.hidden);
+    if (dockIconSize) dockIconSize.value = String(d.iconSize);
+    if (dockIconSizeValue) dockIconSizeValue.textContent = `${d.iconSize}px`;
+    if (dockBottomGap) dockBottomGap.value = String(d.bottomGap);
+    if (dockBottomGapValue) dockBottomGapValue.textContent = `${d.bottomGap}px`;
+    if (dockIconGap) dockIconGap.value = String(d.iconGap);
+    if (dockIconGapValue) dockIconGapValue.textContent = `${d.iconGap}px`;
+    if (dockBgOpacity) dockBgOpacity.value = String(d.bgOpacity);
+    if (dockBgOpacityValue) dockBgOpacityValue.textContent = `${d.bgOpacity}%`;
+    if (toggleDockHidden) toggleDockHidden.checked = d.hidden;
+  }
+
+  // Initialise control values from stored settings.
+  applyDockStyle();
+
+  async function saveDockStyle(persist = true) {
+    appState.settings.dockStyle = {
+      iconSize: dockIconSize ? Number(dockIconSize.value) : 28,
+      bottomGap: dockBottomGap ? Number(dockBottomGap.value) : 18,
+      iconGap: dockIconGap ? Number(dockIconGap.value) : 12,
+      bgOpacity: dockBgOpacity ? Number(dockBgOpacity.value) : 18,
+      hidden: toggleDockHidden ? !!toggleDockHidden.checked : false
+    };
+    applyDockStyle();
+    if (persist) await storage.set({ settings: appState.settings });
+  }
+
+  // Live preview while dragging; persist on release/change.
+  [dockIconSize, dockBottomGap, dockIconGap, dockBgOpacity].forEach((el) => {
+    if (!el) return;
+    el.addEventListener('input', () => saveDockStyle(false));
+    el.addEventListener('change', () => saveDockStyle(true));
+  });
+  if (toggleDockHidden) toggleDockHidden.addEventListener('change', () => saveDockStyle(true));
 
   if (toggleNotesAutoMath) {
     toggleNotesAutoMath.addEventListener('change', async (e) => {
