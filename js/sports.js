@@ -11,7 +11,11 @@ const RAPID_API_UPCOMING_URL = 'https://cricket-api-free-data.p.rapidapi.com/cri
 const RAPID_API_SCHEDULE_URL = 'https://cricket-api-free-data.p.rapidapi.com/cricket-schedule';
 const RAPID_API_SERIES_URL = 'https://cricket-api-free-data.p.rapidapi.com/cricket-series';
 
+const FOOTBALL_DATA_BASE = 'https://api.football-data.org/v4';
+const DEFAULT_FOOTBALL_API_KEY = '3c226b12077041858fb70b864b69df08';
+
 const DEFAULT_SPORTS_SETTINGS = {
+  sport: 'cricket',
   apiKey: '0dc568e8-bca1-480e-bda6-46fe8a4f8007',
   apiKeys: [
     '0dc568e8-bca1-480e-bda6-46fe8a4f8007',
@@ -19,8 +23,13 @@ const DEFAULT_SPORTS_SETTINGS = {
     '02f80f78-1f29-4ce5-b912-f36d1cf73d32',
     '7a209ecc-49a9-4172-831a-cc255dfd70f1'
   ],
+  footballApiKey: '',
   tournament: "ICC Men's T20 World Cup"
 };
+
+function resolveSport(settings) {
+  return normalizeText(settings?.sport) === 'football' ? 'football' : 'cricket';
+}
 
 function normalizeText(v) {
   return String(v || '').toLowerCase().trim();
@@ -369,6 +378,150 @@ async function fetchCricScores(settings) {
   throw (lastErr || new Error('No matches in CricAPI response'));
 }
 
+function footballApiKey(settings) {
+  return String(settings?.footballApiKey || '').trim() || DEFAULT_FOOTBALL_API_KEY;
+}
+
+// Maps common keywords to football-data.org competition codes. Users can also
+// type a code directly (e.g. "WC", "PL"). See football-data.org/coverage.
+const FOOTBALL_COMPETITION_CODES = {
+  'world cup': 'WC',
+  'fifa world cup': 'WC',
+  'champions league': 'CL',
+  'uefa champions league': 'CL',
+  'premier league': 'PL',
+  'epl': 'PL',
+  'english premier league': 'PL',
+  'la liga': 'PD',
+  'primera division': 'PD',
+  'laliga': 'PD',
+  'serie a': 'SA',
+  'bundesliga': 'BL1',
+  'ligue 1': 'FL1',
+  'eredivisie': 'DED',
+  'primeira liga': 'PPL',
+  'portuguese liga': 'PPL',
+  'championship': 'ELC',
+  'efl championship': 'ELC',
+  'european championship': 'EC',
+  'euros': 'EC',
+  'euro': 'EC',
+  'copa libertadores': 'CLI',
+  'brasileirao': 'BSA',
+  'campeonato brasileiro': 'BSA'
+};
+
+function resolveCompetitionCode(keyword) {
+  const key = normalizeText(keyword);
+  if (!key) return '';
+  if (FOOTBALL_COMPETITION_CODES[key]) return FOOTBALL_COMPETITION_CODES[key];
+  // Allow typing a raw code such as "WC" or "BL1".
+  if (/^[a-z]{2}[a-z0-9]?$/i.test(key)) return key.toUpperCase();
+  // Partial match against known names (e.g. "champions" -> CL).
+  const hit = Object.keys(FOOTBALL_COMPETITION_CODES).find(
+    (name) => name.includes(key) || key.includes(name)
+  );
+  return hit ? FOOTBALL_COMPETITION_CODES[hit] : '';
+}
+
+async function fetchFootballData(path, apiKey) {
+  const res = await fetch(`${FOOTBALL_DATA_BASE}${path}`, {
+    cache: 'no-store',
+    headers: {
+      Accept: 'application/json',
+      'X-Auth-Token': apiKey
+    }
+  });
+  let json = null;
+  try {
+    json = await res.json();
+  } catch (err) {
+    json = null;
+  }
+  if (!res.ok) {
+    const msg = json?.message || `football-data.org HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  return Array.isArray(json?.matches) ? json.matches : [];
+}
+
+function normalizeFootballMatch(m) {
+  const status = String(m?.status || '').toUpperCase();
+  const liveStatuses = ['IN_PLAY', 'PAUSED', 'LIVE'];
+  const finishedStatuses = ['FINISHED', 'AWARDED'];
+
+  const home = firstDefined(m?.homeTeam?.shortName, m?.homeTeam?.name, m?.homeTeam?.tla, 'Home');
+  const away = firstDefined(m?.awayTeam?.shortName, m?.awayTeam?.name, m?.awayTeam?.tla, 'Away');
+  const ft = m?.score?.fullTime || {};
+  const hg = ft?.home;
+  const ag = ft?.away;
+  const hasHome = hg !== null && typeof hg !== 'undefined';
+  const hasAway = ag !== null && typeof ag !== 'undefined';
+
+  let statusText;
+  if (liveStatuses.includes(status)) {
+    statusText = `LIVE${typeof m?.minute !== 'undefined' && m?.minute !== null ? ` · ${m.minute}'` : status === 'PAUSED' ? ' · Half Time' : ''}`;
+  } else if (finishedStatuses.includes(status)) {
+    statusText = 'Full Time';
+  } else {
+    let when = '';
+    if (m?.utcDate) {
+      const dt = new Date(m.utcDate);
+      if (!Number.isNaN(dt.getTime())) {
+        when = dt.toLocaleString(undefined, {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+    }
+    const label = status === 'POSTPONED' ? 'Postponed' : status === 'SUSPENDED' ? 'Suspended' : 'Upcoming';
+    statusText = `${label}${when ? ` · ${when}` : ''}`;
+  }
+
+  const competition = firstDefined(m?.competition?.name, 'Football');
+  const stageGroup = [
+    m?.stage ? String(m.stage).replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()) : '',
+    m?.group || (m?.matchday ? `Matchday ${m.matchday}` : '')
+  ].filter(Boolean).join(' · ');
+
+  return {
+    id: firstDefined(m?.id, `${home}-${away}-${m?.utcDate || ''}`),
+    t1: home,
+    t2: away,
+    t1s: hasHome ? String(hg) : '',
+    t2s: hasAway ? String(ag) : '',
+    series: competition,
+    status: statusText,
+    name: `${home} vs ${away}`,
+    venue: firstDefined(m?.venue, ''),
+    date: m?.utcDate || '',
+    dateTimeGMT: m?.utcDate || '',
+    matchType: stageGroup
+  };
+}
+
+async function fetchFootballMatches(settings) {
+  const apiKey = footballApiKey(settings);
+  if (!apiKey) throw new Error('Add your football-data.org API token in settings');
+
+  const keyword = String(settings?.tournament || '').trim();
+  const code = resolveCompetitionCode(keyword);
+
+  // With a competition keyword/code, pull that competition's whole current
+  // season and let pickBestMatch sort to live > next upcoming > most recent.
+  // Without one, fall back to today's matches across subscribed competitions.
+  const path = code ? `/competitions/${encodeURIComponent(code)}/matches` : '/matches';
+  const matches = await fetchFootballData(path, apiKey);
+  const normalized = matches.map(normalizeFootballMatch);
+  const deduped = dedupeMatches(normalized);
+  if (deduped.length) return deduped;
+  throw new Error(
+    code ? `No matches found for "${keyword}" right now` : 'No matches today for your subscribed competitions'
+  );
+}
+
 function buildView(match, settings) {
   if (!match) {
     return {
@@ -400,15 +553,23 @@ export function initSportsWidget(appState) {
 
   const refreshBtn = document.getElementById('sportsRefresh');
 
-  async function saveCache(view, tournament) {
+  // Cache per sport so each sport's last refreshed scores stay put until that
+  // sport is refreshed again (switching sports won't wipe the other's scores).
+  async function saveCache(view, tournament, sport) {
     try {
-      await storage.set({
-        [SPORTS_CACHE_KEY]: {
-          view,
-          tournament: tournament || '',
-          cachedAt: Date.now()
-        }
-      });
+      const res = await storage.get([SPORTS_CACHE_KEY]);
+      const existing =
+        res?.[SPORTS_CACHE_KEY] && typeof res[SPORTS_CACHE_KEY] === 'object'
+          ? res[SPORTS_CACHE_KEY]
+          : {};
+      const bySport =
+        existing.bySport && typeof existing.bySport === 'object' ? existing.bySport : {};
+      bySport[sport || 'cricket'] = {
+        view,
+        tournament: tournament || '',
+        cachedAt: Date.now()
+      };
+      await storage.set({ [SPORTS_CACHE_KEY]: { ...existing, bySport } });
     } catch (err) {
       // Ignore cache write failures.
     }
@@ -417,12 +578,19 @@ export function initSportsWidget(appState) {
   async function renderFromCacheIfAvailable() {
     try {
       const settings = appState?.sportsSettings || DEFAULT_SPORTS_SETTINGS;
-      const currentTournament = settings?.tournament || DEFAULT_SPORTS_SETTINGS.tournament;
+      const sport = resolveSport(settings);
+      const currentTournament = settings?.tournament || '';
       const res = await storage.get([SPORTS_CACHE_KEY]);
       const cache = res?.[SPORTS_CACHE_KEY];
-      const cachedView = cache?.view;
+      if (!cache || typeof cache !== 'object') return false;
+
+      // Prefer the per-sport entry; fall back to the legacy flat shape.
+      let entry = cache.bySport ? cache.bySport[sport] : null;
+      if (!entry && String(cache.sport || 'cricket') === sport) entry = cache;
+
+      const cachedView = entry?.view;
       if (!cachedView || typeof cachedView !== 'object') return false;
-      const cachedTournament = String(cache?.tournament || '').trim();
+      const cachedTournament = String(entry?.tournament || '').trim();
       if (cachedTournament && cachedTournament !== currentTournament) return false;
       renderState(container, cachedView);
       return true;
@@ -431,9 +599,7 @@ export function initSportsWidget(appState) {
     }
   }
 
-  async function refresh() {
-    const settings = appState?.sportsSettings || DEFAULT_SPORTS_SETTINGS;
-
+  async function refreshCricket(settings) {
     try {
       renderState(container, { competition: settings.tournament, status: 'Loading live scores...' });
       const { matches: allMatches, usedKey } = await fetchCricScores(settings);
@@ -442,7 +608,7 @@ export function initSportsWidget(appState) {
       const match = pickBestMatch(pool);
       const view = buildView(match, settings);
       renderState(container, view);
-      await saveCache(view, settings?.tournament || DEFAULT_SPORTS_SETTINGS.tournament);
+      await saveCache(view, settings?.tournament || DEFAULT_SPORTS_SETTINGS.tournament, 'cricket');
 
       if (usedKey && appState?.sportsSettings) {
         appState.sportsSettings.apiKey = usedKey;
@@ -459,8 +625,11 @@ export function initSportsWidget(appState) {
         if (!match && resolvedTournament) view.competition = resolvedTournament;
         view.meta = [view.meta, 'Source: RapidAPI fallback'].filter(Boolean).join(' | ');
         renderState(container, view);
-        await saveCache(view, resolvedTournament || DEFAULT_SPORTS_SETTINGS.tournament);
+        await saveCache(view, resolvedTournament || DEFAULT_SPORTS_SETTINGS.tournament, 'cricket');
       } catch (rapidErr) {
+        // Keep the last successfully loaded scores instead of nulling them out.
+        const restored = await renderFromCacheIfAvailable();
+        if (restored) return;
         const hasKey = normalizeApiKeys(settings).length > 0;
         const details = String(err?.message || '').trim();
         const fallbackDetails = String(rapidErr?.message || '').trim();
@@ -475,6 +644,41 @@ export function initSportsWidget(appState) {
           ].join(' | ')
         });
       }
+    }
+  }
+
+  async function refreshFootball(settings) {
+    const label = settings?.tournament || 'Football';
+    try {
+      renderState(container, { competition: label, status: 'Loading live scores...' });
+      const allMatches = await fetchFootballMatches(settings);
+      const filtered = allMatches.filter((m) => includesTournament(m, settings?.tournament));
+      const pool = filtered.length ? filtered : allMatches;
+      const match = pickBestMatch(pool);
+      const view = buildView(match, settings);
+      if (!match) view.competition = label;
+      renderState(container, view);
+      await saveCache(view, settings?.tournament || '', 'football');
+    } catch (err) {
+      // Keep the last successfully loaded scores instead of nulling them out.
+      const restored = await renderFromCacheIfAvailable();
+      if (restored) return;
+      renderState(container, {
+        competition: label,
+        status: 'Failed to load football scores',
+        team1: '-',
+        team2: '-',
+        meta: String(err?.message || 'Football API request failed')
+      });
+    }
+  }
+
+  async function refresh() {
+    const settings = appState?.sportsSettings || DEFAULT_SPORTS_SETTINGS;
+    if (resolveSport(settings) === 'football') {
+      await refreshFootball(settings);
+    } else {
+      await refreshCricket(settings);
     }
   }
 

@@ -10,6 +10,7 @@
     "https://*/*",
     "http://*/*",
     "https://api.cricapi.com/*",
+    "https://api.football-data.org/*",
     "https://openrouter.ai/*",
     "https://cricket-api-free-data.p.rapidapi.com/*",
     "https://api.web3forms.com/*",

@@ -97,12 +97,14 @@ const DEFAULT_CURRENCY_SETTINGS = {
 };
 const DEFAULT_IMAGE_WIDGET = { src: '' };
 const DEFAULT_SPORTS_SETTINGS = {
+  sport: 'cricket',
   apiKey: '7a209ecc-49a9-4172-831a-cc255dfd70f1',
   apiKeys: [
     'b14f5ef4-5035-4f1f-963c-e744f0c84017',
     '1dfd5e61-53f8-43f4-a70c-1cecae0bdf49',
     '621ba9ac-df95-419f-870c-21539f651652'
   ],
+  footballApiKey: '',
   tournament: "ICC Men's T20 World Cup"
 };
 const DEFAULT_AI_CHAT_SETTINGS = {

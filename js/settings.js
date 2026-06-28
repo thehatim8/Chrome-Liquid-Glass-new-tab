@@ -198,6 +198,8 @@ export async function initSettings(appState, options = {}) {
   const sportsApiHelp = document.getElementById('sportsApiHelp');
   const unsplashApiHelp = document.getElementById('unsplashApiHelp');
   const sportsWidgetApiKeys = document.getElementById('sportsWidgetApiKeys');
+  const sportsWidgetSport = document.getElementById('sportsWidgetSport');
+  const sportsWidgetFootballApiKey = document.getElementById('sportsWidgetFootballApiKey');
   const sportsWidgetTournament = document.getElementById('sportsWidgetTournament');
   const saveSportsWidgetSettings = document.getElementById('saveSportsWidgetSettings');
   const aiChatApiKey = document.getElementById('aiChatApiKey');
@@ -574,9 +576,45 @@ export async function initSettings(appState, options = {}) {
     }
   }
 
+  // Hidden file input that backs the "Upload your own" wallpaper tile.
+  const wallpaperUploadInput = document.createElement('input');
+  wallpaperUploadInput.type = 'file';
+  wallpaperUploadInput.accept = 'image/*';
+  wallpaperUploadInput.style.display = 'none';
+  document.body.appendChild(wallpaperUploadInput);
+  wallpaperUploadInput.addEventListener('change', async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    let dataUrl;
+    if (file.size > 500 * 1024) {
+      dataUrl = await downscaleImage(file, 900);
+    } else {
+      dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+    wallpaperUploadInput.value = '';
+    await setBackgroundAndPersist(dataUrl);
+  });
+
   function renderWallpaperGrid() {
     if (!wallpaperGrid) return;
     wallpaperGrid.innerHTML = '';
+
+    // "Upload your own" tile, same size as the built-in thumbnails.
+    const uploadTile = document.createElement('button');
+    uploadTile.type = 'button';
+    uploadTile.className = 'wallpaper-tile wallpaper-tile-upload';
+    uploadTile.title = 'Upload your own wallpaper';
+    uploadTile.setAttribute('aria-label', 'Upload your own wallpaper');
+    uploadTile.innerHTML =
+      '<span class="wallpaper-upload-plus">+</span><span>Upload</span>';
+    uploadTile.addEventListener('click', () => wallpaperUploadInput.click());
+    wallpaperGrid.appendChild(uploadTile);
+
     builtInWallpapers.forEach((path) => {
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -676,22 +714,52 @@ export async function initSettings(appState, options = {}) {
 
     appState.sportsSettings = appState.sportsSettings || {};
     const keys = collectSportsKeys(appState.sportsSettings);
+    const currentSport = String(appState.sportsSettings.sport || '').toLowerCase() === 'football'
+      ? 'football'
+      : 'cricket';
     if (sportsWidgetApiKeys) sportsWidgetApiKeys.value = keys.join('\n');
-    if (sportsWidgetTournament) sportsWidgetTournament.value = appState.sportsSettings.tournament || "ICC Men's T20 World Cup";
+    if (sportsWidgetFootballApiKey) sportsWidgetFootballApiKey.value = appState.sportsSettings.footballApiKey || '';
+    if (sportsWidgetSport) sportsWidgetSport.value = currentSport;
+    if (sportsWidgetTournament) sportsWidgetTournament.value = appState.sportsSettings.tournament || '';
+
+    function applySportFieldVisibility() {
+      const sport = String(sportsWidgetSport?.value || 'cricket').toLowerCase() === 'football'
+        ? 'football'
+        : 'cricket';
+      const section = document.getElementById('sportsWidgetSettingsSection');
+      if (section) {
+        section.querySelectorAll('.sports-field-cricket').forEach((el) => {
+          el.classList.toggle('hidden', sport !== 'cricket');
+        });
+        section.querySelectorAll('.sports-field-football').forEach((el) => {
+          el.classList.toggle('hidden', sport !== 'football');
+        });
+      }
+    }
+    applySportFieldVisibility();
+    if (sportsWidgetSport) {
+      sportsWidgetSport.addEventListener('change', applySportFieldVisibility);
+    }
 
     if (saveSportsWidgetSettings) {
       saveSportsWidgetSettings.addEventListener('click', async () => {
         try {
+          const selectedSport = String(sportsWidgetSport?.value || 'cricket').toLowerCase() === 'football'
+            ? 'football'
+            : 'cricket';
           const typedTournament = (sportsWidgetTournament?.value || '').trim();
+          const typedFootballKey = (sportsWidgetFootballApiKey?.value || '').trim();
           const keyLines = String(sportsWidgetApiKeys?.value || '')
             .split(/\r?\n/)
             .map((k) => k.trim())
             .filter(Boolean);
           const uniqueKeys = Array.from(new Set(keyLines));
           const nextSportsSettings = {
+            sport: selectedSport,
             apiKeys: uniqueKeys,
             apiKey: uniqueKeys[0] || '',
-            tournament: typedTournament || "ICC Men's T20 World Cup"
+            footballApiKey: typedFootballKey,
+            tournament: typedTournament || (selectedSport === 'cricket' ? "ICC Men's T20 World Cup" : '')
           };
 
           await storage.set({ sportsSettings: nextSportsSettings });
@@ -700,16 +768,17 @@ export async function initSettings(appState, options = {}) {
           const savedKeys = collectSportsKeys(saved);
           const sameKeys = JSON.stringify(savedKeys) === JSON.stringify(uniqueKeys);
           const sameTournament = String(saved.tournament || '') === String(nextSportsSettings.tournament || '');
+          const sameSport = String(saved.sport || '') === String(nextSportsSettings.sport || '');
 
-          if (!sameKeys || !sameTournament) {
+          if (!sameKeys || !sameTournament || !sameSport) {
             throw new Error('Settings verification failed after save.');
           }
 
           appState.sportsSettings = nextSportsSettings;
-          alert('CricAPI settings saved.');
+          alert('Sports settings saved. Press Refresh on the widget to load scores.');
         } catch (err) {
           console.error('settings:sports:save:error', err);
-          alert('Failed to save CricAPI settings. Please try again.');
+          alert('Failed to save sports settings. Please try again.');
         }
       });
     }

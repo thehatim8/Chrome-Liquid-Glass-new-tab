@@ -488,12 +488,22 @@
                                     </div>
                                 </section>
                                 <section id="sportsWidgetSettingsSection" class="settings-subsection">
-                                    <div class="settings-subheading">Cricket (CricAPI)
-                                        <button id="sportsApiHelp" class="btn-secondary help-btn" type="button" title="How to get CricAPI key" aria-label="How to get CricAPI key">?</button>
+                                    <div class="settings-subheading">Sports
+                                        <button id="sportsApiHelp" class="btn-secondary help-btn" type="button" title="How to get API keys" aria-label="How to get API keys">?</button>
                                     </div>
-                                    <textarea id="sportsWidgetApiKeys" rows="3" placeholder="Add your CricAPI keys (one key per line)"></textarea>
-                                    <input id="sportsWidgetTournament" type="text" placeholder="Tournament keyword (e.g. ICC Men's T20 World Cup)">
-                                    <small>If one key hits its daily limit, the widget auto-tries the next.</small>
+                                    <select id="sportsWidgetSport" aria-label="Sport to show">
+                                        <option value="cricket">Cricket</option>
+                                        <option value="football">Football</option>
+                                    </select>
+                                    <div class="sports-field sports-field-cricket">
+                                        <textarea id="sportsWidgetApiKeys" rows="3" placeholder="Add your CricAPI keys (one key per line)"></textarea>
+                                        <small>If one key hits its daily limit, the widget auto-tries the next.</small>
+                                    </div>
+                                    <div class="sports-field sports-field-football">
+                                        <input id="sportsWidgetFootballApiKey" type="text" placeholder="football-data.org API token — leave empty for demo key">
+                                        <small>Leave empty to use the shared demo token, or get your own free token at football-data.org.</small>
+                                    </div>
+                                    <input id="sportsWidgetTournament" type="text" placeholder="Competition (e.g. World Cup, Premier League) — football uses this too">
                                     <div class="field-actions">
                                         <button id="saveSportsWidgetSettings" class="btn-primary" type="button">Save</button>
                                     </div>

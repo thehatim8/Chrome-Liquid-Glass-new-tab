@@ -363,10 +363,39 @@ select {
     padding-right: 28px;
 }
 
-/* Keep native dropdown lists readable across all selects. */
+/* Native dropdown popups follow the active theme. `color-scheme` tells the
+   browser to paint the option list with matching dark/light chrome, and the
+   explicit option colors keep it consistent across platforms. */
+select {
+    color-scheme: dark;
+}
 select option {
-    color: #0b1020;
+    color: var(--muted, #e6e9f0);
+    background: #1b2030;
+}
+
+/* Light themes */
+body[data-color-theme="material-light"] select,
+body.glass.glass-light select {
+    color-scheme: light;
+}
+body[data-color-theme="material-light"] select option {
+    color: #1D1B20;
+    background: #F3EDF7;
+}
+body.glass.glass-light select option {
+    color: #1a2738;
     background: #ffffff;
+}
+
+/* Dark themes */
+body[data-color-theme="material-dark"] select option {
+    color: #E6E0E9;
+    background: #2B2930;
+}
+body[data-color-theme="apple-glass"] select option {
+    color: #f2f5fb;
+    background: #1c1c1e;
 }
 
 input[type="checkbox"] {
@@ -1442,6 +1471,15 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
 .dock-add-btn img {
     width: 20px;
     height: 20px;
+    /* add.svg renders black when loaded via <img>; recolor it per theme so the
+       "+" stays visible. Default app theme is dark, so make it white. */
+    filter: brightness(0) invert(1);
+}
+
+/* Light themes: keep the icon dark on the light dock surface. */
+body[data-color-theme="material-light"] .dock-add-btn img,
+body.glass.glass-light .dock-add-btn img {
+    filter: brightness(0);
 }
 
 .dock-row {
@@ -2052,6 +2090,28 @@ body.glass.glass-light :is(.btn-secondary, .icon-btn, .todo-edit, .todo-remind, 
 .wallpaper-tile.active {
     border-color: rgba(var(--accent-rgb), 0.75);
     box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.2);
+}
+
+/* "Upload your own" tile — matches the wallpaper thumbnail size. */
+.wallpaper-tile-upload {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-height: 74px;
+    color: var(--muted);
+    font-size: 12px;
+    border-style: dashed;
+}
+.wallpaper-tile-upload:hover {
+    border-color: rgba(var(--accent-rgb), 0.6);
+    background: rgba(var(--accent-rgb), 0.08);
+}
+.wallpaper-upload-plus {
+    font-size: 22px;
+    line-height: 1;
+    font-weight: 300;
 }
 
 .icon-grid-body {
