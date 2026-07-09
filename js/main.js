@@ -189,6 +189,34 @@ function spansFromSizes(sizeMap) {
   return out;
 }
 
+function logicalPositionChanged(prev, next) {
+  return prev?.col !== next.col || prev?.row !== next.row;
+}
+
+function logicalSizeChanged(prev, next) {
+  return prev?.cw !== next.cw || prev?.ch !== next.ch;
+}
+
+function serializeLogicalPositions(positionMap) {
+  const out = {};
+  Object.keys(positionMap || {}).forEach((id) => {
+    const p = positionMap[id] || {};
+    if (!Number.isFinite(p.col) || !Number.isFinite(p.row)) return;
+    out[id] = { col: p.col, row: p.row };
+  });
+  return out;
+}
+
+function serializeLogicalSizes(sizeMap) {
+  const out = {};
+  Object.keys(sizeMap || {}).forEach((id) => {
+    const s = sizeMap[id] || {};
+    if (!Number.isFinite(s.cw) || !Number.isFinite(s.ch)) return;
+    out[id] = { cw: s.cw, ch: s.ch };
+  });
+  return out;
+}
+
 function sanitizeDefaultImageWidget(state) {
   if (!state || typeof state !== 'object') return { ...DEFAULT_IMAGE_WIDGET };
   const src = typeof state.src === 'string' ? state.src : '';
@@ -309,7 +337,7 @@ function centerVisibleWidgetColumns(allWidgetIds, positions, sizes, visibleWidge
     const p = positions[id] || {};
     const s = sizes[id] || {};
     const col = Number.isFinite(p.col) ? p.col : 0;
-    const minCw = minWidgetCols();
+    const minCw = minWidgetCols(id);
     const cw = Number.isFinite(s.cw) ? Math.max(minCw, s.cw) : minCw;
 
     usedLeft = Math.min(usedLeft, col);
@@ -532,7 +560,7 @@ async function bootstrap() {
   const mergedDefaultSpans = { ...DEFAULT_SPANS, ...defaultSpans, ...dynamicDefaultSpans };
 
   const bootGrid = computeGrid(workspace);
-  let normalizedPositionChanged = false;
+  let normalizedLayoutChanged = false;
 
   // apply background & glass early
   const glassDarkness = Number.isFinite(Number(settings.glassDarkness))
@@ -583,7 +611,8 @@ async function bootstrap() {
     await storage.set({ userName: nextName, userNameOnboarded: true });
   }
 
-  // place widgets & apply sizes
+  // Normalize stored logical layout. Pixel x/y/w/h are viewport-specific, so
+  // we keep them in memory only and avoid persisting them during boot.
   allWidgetIds.forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -610,76 +639,35 @@ async function bootstrap() {
     };
     const clampCol = (col) => Math.max(0, Math.min(Math.round(col), Math.max(0, bootGrid.cols - spanNorm.cw)));
     const clampRow = (row) => Math.max(0, Math.min(Math.round(row), Math.max(0, bootGrid.rows - spanNorm.ch)));
-    let resolvedPos = null;
     if (Number.isFinite(p.col) && Number.isFinite(p.row)) {
       const col = clampCol(p.col);
       const row = clampRow(p.row);
-      resolvedPos = cellToPos(col, row, bootGrid);
-      const prevX = Number.isFinite(p.x) ? p.x : null;
-      const prevY = Number.isFinite(p.y) ? p.y : null;
-      if (col !== p.col || row !== p.row || prevX !== resolvedPos.x || prevY !== resolvedPos.y) {
-        positions[id] = { ...p, col, row, x: resolvedPos.x, y: resolvedPos.y };
-        normalizedPositionChanged = true;
-      }
+      const nextPos = { ...p, col, row };
+      if (logicalPositionChanged(p, nextPos)) normalizedLayoutChanged = true;
+      positions[id] = nextPos;
     } else if (Number.isFinite(p.x) && Number.isFinite(p.y)) {
       const derivedCell = posToCell(p.x, p.y, bootGrid);
       const col = clampCol(derivedCell.col);
       const row = clampRow(derivedCell.row);
-      resolvedPos = cellToPos(col, row, bootGrid);
-      positions[id] = { ...p, col, row, x: resolvedPos.x, y: resolvedPos.y };
-      normalizedPositionChanged = true;
+      positions[id] = { ...p, col, row };
+      normalizedLayoutChanged = true;
     } else {
       const def = mergedDefaultPositions[id] || { col: 0, row: 0 };
       const col = clampCol(def.col);
       const row = clampRow(def.row);
-      resolvedPos = cellToPos(col, row, bootGrid);
-      positions[id] = { col, row, x: resolvedPos.x, y: resolvedPos.y };
-      normalizedPositionChanged = true;
+      positions[id] = { col, row };
+      normalizedLayoutChanged = true;
     }
-    const s = pxFromSpan(spanNorm, bootGrid);
     const prevSize = sizes[id] || {};
-    sizes[id] = { w: s.w, h: s.h, cw: s.cw, ch: s.ch };
-    if (prevSize.w !== s.w || prevSize.h !== s.h || prevSize.cw !== s.cw || prevSize.ch !== s.ch) {
-      normalizedPositionChanged = true;
-    }
-    const finalX = resolvedPos.x;
-    el.style.left = finalX + 'px';
-    el.style.top = resolvedPos.y + 'px';
-    el.style.width = s.w + 'px';
-    el.style.height = s.h + 'px';
+    const nextSize = { ...prevSize, cw: spanNorm.cw, ch: spanNorm.ch };
+    if (logicalSizeChanged(prevSize, nextSize)) normalizedLayoutChanged = true;
+    sizes[id] = nextSize;
     el.classList.toggle('hidden', visibleWidgets[id] === false);
   });
 
-  if (centerVisibleWidgetColumns(allWidgetIds, positions, sizes, visibleWidgets, bootGrid)) {
-    normalizedPositionChanged = true;
-    allWidgetIds.forEach((id) => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      const p = positions[id];
-      if (!p || !Number.isFinite(p.col) || !Number.isFinite(p.row)) return;
-      const px = cellToPos(p.col, p.row, bootGrid);
-      const s = sizes[id] || {};
-      const minCw = minWidgetCols(id);
-      const minCh = minWidgetRows(id);
-      const spanNorm = {
-        cw: Math.max(minCw, s.cw || minCw),
-        ch: Math.max(minCh, s.ch || minCh)
-      };
-      const sizePx = pxFromSpan(spanNorm, bootGrid);
-      sizes[id] = { ...s, w: sizePx.w, h: sizePx.h, cw: spanNorm.cw, ch: spanNorm.ch };
-      el.style.left = `${px.x}px`;
-      el.style.top = `${px.y}px`;
-      el.style.width = `${sizePx.w}px`;
-      el.style.height = `${sizePx.h}px`;
-    });
-  }
-
-  if (normalizedPositionChanged) {
-    await storage.set({ positions, sizes });
-  }
-
   function relayoutWidgetsToGrid() {
     const grid = computeGrid(workspace);
+    centerVisibleWidgetColumns(allWidgetIds, positions, sizes, visibleWidgets, grid);
     allWidgetIds.forEach((id) => {
       const el = document.getElementById(id);
       if (!el) return;
@@ -708,6 +696,8 @@ async function bootstrap() {
       const s = pxFromSpan(spanNorm, grid);
       const px = cellToPos(col, row, grid);
 
+      positions[id] = { ...(positions[id] || {}), x: px.x, y: px.y };
+      sizes[id] = { ...(sizes[id] || {}), w: s.w, h: s.h, cw: spanNorm.cw, ch: spanNorm.ch };
       el.style.left = `${px.x}px`;
       el.style.top = `${px.y}px`;
       el.style.width = `${s.w}px`;
@@ -715,6 +705,13 @@ async function bootstrap() {
     });
 
     updatePersistentGrid(workspace);
+  }
+
+  if (normalizedLayoutChanged) {
+    await storage.set({
+      positions: serializeLogicalPositions(positions),
+      sizes: serializeLogicalSizes(sizes)
+    });
   }
 
   relayoutWidgetsToGrid();

@@ -1,6 +1,8 @@
 import { storage } from './storage.js';
 
 const SPORTS_CACHE_KEY = 'sportsWidgetCache';
+const SPORTS_CACHE_KEY_CRICKET = 'sportsWidgetCache.cricket';
+const SPORTS_CACHE_KEY_FOOTBALL = 'sportsWidgetCache.football';
 
 const CRIC_API_SCORE_URL = 'https://api.cricapi.com/v1/cricScore';
 const CRIC_API_CURRENT_URL = 'https://api.cricapi.com/v1/currentMatches';
@@ -547,6 +549,46 @@ function buildView(match, settings) {
   };
 }
 
+function cacheKeyForSport(sport) {
+  return resolveSport({ sport }) === 'football'
+    ? SPORTS_CACHE_KEY_FOOTBALL
+    : SPORTS_CACHE_KEY_CRICKET;
+}
+
+function inferSportFromView(view) {
+  if (!view || typeof view !== 'object') return null;
+  const sample = normalizeText([
+    view.competition,
+    view.status,
+    view.team1,
+    view.team2,
+    view.meta
+  ].join(' '));
+  if (!sample) return null;
+
+  const looksCricketScore = /\b\d+\/\d+\b/.test(sample) || /\(\d+(?:\.\d+)?\)/.test(sample);
+  const looksCricketText = /(innings|stumps|yet to bat|overs|wickets|cricket|t20|odi|test match)/.test(sample);
+  if (looksCricketScore || looksCricketText) return 'cricket';
+
+  const looksFootballText = /(full time|half time|postponed|suspended|matchday|premier league|la liga|serie a|bundesliga|champions league|football|\b\d{1,3}'\b)/.test(sample);
+  if (looksFootballText) return 'football';
+
+  return null;
+}
+
+function normalizeCachedEntry(entry) {
+  if (!entry || typeof entry !== 'object') return null;
+  if (!entry.view || typeof entry.view !== 'object') return null;
+  const explicitSport = typeof entry.sport === 'string' ? entry.sport : '';
+  const inferredSport = inferSportFromView(entry.view);
+  return {
+    view: entry.view,
+    tournament: String(entry.tournament || '').trim(),
+    sport: explicitSport ? resolveSport({ sport: explicitSport }) : inferredSport,
+    cachedAt: Number(entry.cachedAt) || 0
+  };
+}
+
 export function initSportsWidget(appState) {
   const container = document.getElementById('widget-sports');
   if (!container) return;
@@ -556,43 +598,58 @@ export function initSportsWidget(appState) {
   // Cache per sport so each sport's last refreshed scores stay put until that
   // sport is refreshed again (switching sports won't wipe the other's scores).
   async function saveCache(view, tournament, sport) {
-    try {
-      const res = await storage.get([SPORTS_CACHE_KEY]);
-      const existing =
-        res?.[SPORTS_CACHE_KEY] && typeof res[SPORTS_CACHE_KEY] === 'object'
-          ? res[SPORTS_CACHE_KEY]
-          : {};
-      const bySport =
-        existing.bySport && typeof existing.bySport === 'object' ? existing.bySport : {};
-      bySport[sport || 'cricket'] = {
-        view,
-        tournament: tournament || '',
-        cachedAt: Date.now()
-      };
-      await storage.set({ [SPORTS_CACHE_KEY]: { ...existing, bySport } });
-    } catch (err) {
-      // Ignore cache write failures.
-    }
+    const resolvedSport = resolveSport({ sport });
+    const perSportKey = cacheKeyForSport(resolvedSport);
+    const res = await storage.get([SPORTS_CACHE_KEY]);
+    const existing =
+      res?.[SPORTS_CACHE_KEY] && typeof res[SPORTS_CACHE_KEY] === 'object'
+        ? res[SPORTS_CACHE_KEY]
+        : {};
+    const bySport =
+      existing.bySport && typeof existing.bySport === 'object' ? existing.bySport : {};
+    const nextEntry = {
+      view,
+      tournament: tournament || '',
+      sport: resolvedSport,
+      cachedAt: Date.now()
+    };
+    bySport[resolvedSport] = nextEntry;
+    await storage.set({
+      [perSportKey]: nextEntry,
+      [SPORTS_CACHE_KEY]: { ...existing, bySport }
+    });
   }
 
   async function renderFromCacheIfAvailable() {
     try {
       const settings = appState?.sportsSettings || DEFAULT_SPORTS_SETTINGS;
       const sport = resolveSport(settings);
-      const currentTournament = settings?.tournament || '';
-      const res = await storage.get([SPORTS_CACHE_KEY]);
+      const perSportKey = cacheKeyForSport(sport);
+      const res = await storage.get([perSportKey, SPORTS_CACHE_KEY]);
+      const directEntry = normalizeCachedEntry(res?.[perSportKey]);
+      if (directEntry && directEntry.sport === sport) {
+        renderState(container, directEntry.view);
+        return true;
+      }
+
       const cache = res?.[SPORTS_CACHE_KEY];
       if (!cache || typeof cache !== 'object') return false;
 
-      // Prefer the per-sport entry; fall back to the legacy flat shape.
-      let entry = cache.bySport ? cache.bySport[sport] : null;
-      if (!entry && String(cache.sport || 'cricket') === sport) entry = cache;
+      // Restore only the currently selected sport. We never cross over to the
+      // other sport on reload because that makes the widget look incorrect.
+      let entry = null;
 
-      const cachedView = entry?.view;
-      if (!cachedView || typeof cachedView !== 'object') return false;
-      const cachedTournament = String(entry?.tournament || '').trim();
-      if (cachedTournament && cachedTournament !== currentTournament) return false;
-      renderState(container, cachedView);
+      if (cache.bySport && typeof cache.bySport === 'object') {
+        entry = normalizeCachedEntry(cache.bySport[sport]);
+      }
+
+      if (!entry) {
+        const legacyEntry = normalizeCachedEntry(cache);
+        if (legacyEntry && legacyEntry.sport === sport) entry = legacyEntry;
+      }
+      if (!entry) return false;
+
+      renderState(container, entry.view);
       return true;
     } catch (err) {
       return false;
@@ -607,8 +664,8 @@ export function initSportsWidget(appState) {
       const pool = filtered.length ? filtered : allMatches;
       const match = pickBestMatch(pool);
       const view = buildView(match, settings);
-      renderState(container, view);
       await saveCache(view, settings?.tournament || DEFAULT_SPORTS_SETTINGS.tournament, 'cricket');
+      renderState(container, view);
 
       if (usedKey && appState?.sportsSettings) {
         appState.sportsSettings.apiKey = usedKey;
@@ -624,8 +681,8 @@ export function initSportsWidget(appState) {
         const view = buildView(match, { ...settings, tournament: resolvedTournament });
         if (!match && resolvedTournament) view.competition = resolvedTournament;
         view.meta = [view.meta, 'Source: RapidAPI fallback'].filter(Boolean).join(' | ');
-        renderState(container, view);
         await saveCache(view, resolvedTournament || DEFAULT_SPORTS_SETTINGS.tournament, 'cricket');
+        renderState(container, view);
       } catch (rapidErr) {
         // Keep the last successfully loaded scores instead of nulling them out.
         const restored = await renderFromCacheIfAvailable();
@@ -657,8 +714,8 @@ export function initSportsWidget(appState) {
       const match = pickBestMatch(pool);
       const view = buildView(match, settings);
       if (!match) view.competition = label;
-      renderState(container, view);
       await saveCache(view, settings?.tournament || '', 'football');
+      renderState(container, view);
     } catch (err) {
       // Keep the last successfully loaded scores instead of nulling them out.
       const restored = await renderFromCacheIfAvailable();
@@ -691,8 +748,11 @@ export function initSportsWidget(appState) {
   void (async () => {
     const hasCache = await renderFromCacheIfAvailable();
     if (hasCache) return;
+    const currentSport = resolveSport(appState?.sportsSettings || DEFAULT_SPORTS_SETTINGS);
+    const currentLabel = String(appState?.sportsSettings?.tournament || '').trim()
+      || (currentSport === 'football' ? 'Football' : DEFAULT_SPORTS_SETTINGS.tournament);
     renderState(container, {
-      competition: (appState?.sportsSettings?.tournament || DEFAULT_SPORTS_SETTINGS.tournament),
+      competition: currentLabel,
       status: 'Press Refresh to load scores',
       team1: '-',
       team2: '-',
