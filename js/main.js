@@ -8,7 +8,7 @@ import { initDock } from './dock.js';
 import { initSettings } from './settings.js';
 import { makeResizable, setResizeOverlaysVisible } from './resize.js';
 import { initImageWidget } from './imageWidget.js';
-import { updatePersistentGrid, computeGrid, posToCell, cellToPos } from './grid.js';
+import { updatePersistentGrid, computeGrid, posToCell, cellToPos, findNearestFreeCell } from './grid.js';
 import { initNotes } from './notes.js';
 import { initCalendar } from './calendar.js';
 import { initDayProgress } from './dayProgress.js';
@@ -314,9 +314,9 @@ function minWidgetRows(id) {
   return o ? Math.max(base, o.rows) : base;
 }
 
-function pxFromSpan(span, grid) {
-  const minCw = minWidgetCols();
-  const minCh = minWidgetRows();
+function pxFromSpan(span, grid, id) {
+  const minCw = minWidgetCols(id);
+  const minCh = minWidgetRows(id);
   const cw = Math.max(minCw, span.cw || minCw);
   const ch = Math.max(minCh, span.ch || minCh);
   const w = Math.max(32, Math.round(cw * grid.cellW - 12));
@@ -324,9 +324,37 @@ function pxFromSpan(span, grid) {
   return { w, h, cw, ch };
 }
 
-function centerVisibleWidgetColumns(allWidgetIds, positions, sizes, visibleWidgets, grid) {
+function normalizeLogicalPosition(raw, fallback = { col: 0, row: 0 }) {
+  const src = raw && typeof raw === 'object' ? raw : {};
+  const fallbackCol = Number.isFinite(fallback?.col) ? fallback.col : 0;
+  const fallbackRow = Number.isFinite(fallback?.row) ? fallback.row : 0;
+  const col = Number.isFinite(src.col) ? src.col : fallbackCol;
+  const row = Number.isFinite(src.row) ? src.row : fallbackRow;
+  return {
+    ...src,
+    col: Math.max(0, Math.round(col)),
+    row: Math.max(0, Math.round(row))
+  };
+}
+
+function normalizeLogicalSpan(raw, fallback, id) {
+  const src = raw && typeof raw === 'object' ? raw : {};
+  const minCw = minWidgetCols(id);
+  const minCh = minWidgetRows(id);
+  const fallbackCw = Number.isFinite(fallback?.cw) ? fallback.cw : minCw;
+  const fallbackCh = Number.isFinite(fallback?.ch) ? fallback.ch : minCh;
+  const cw = Number.isFinite(src.cw) ? src.cw : fallbackCw;
+  const ch = Number.isFinite(src.ch) ? src.ch : fallbackCh;
+  return {
+    ...src,
+    cw: Math.max(minCw, Math.round(cw)),
+    ch: Math.max(minCh, Math.round(ch))
+  };
+}
+
+function getCenteredVisibleWidgetShift(allWidgetIds, positions, sizes, visibleWidgets, grid) {
   const ids = allWidgetIds.filter((id) => visibleWidgets[id] !== false && Number.isFinite(positions[id]?.col));
-  if (!ids.length) return false;
+  if (!ids.length) return 0;
 
   let usedLeft = Infinity;
   let usedRight = -Infinity;
@@ -346,22 +374,98 @@ function centerVisibleWidgetColumns(allWidgetIds, positions, sizes, visibleWidge
     maxShift = Math.min(maxShift, grid.cols - (col + cw));
   });
 
-  if (!Number.isFinite(usedLeft) || !Number.isFinite(usedRight)) return false;
+  if (!Number.isFinite(usedLeft) || !Number.isFinite(usedRight)) return 0;
   const usedWidth = Math.max(1, usedRight - usedLeft);
   const targetLeft = (grid.cols - usedWidth) / 2;
   const desiredShift = Math.round(targetLeft - usedLeft);
   const shift = Math.max(minShift, Math.min(maxShift, desiredShift));
-  if (!Number.isFinite(shift) || shift === 0) return false;
+  return Number.isFinite(shift) ? shift : 0;
+}
 
-  ids.forEach((id) => {
-    const p = positions[id];
-    p.col = Math.round((p.col || 0) + shift);
-    const px = cellToPos(p.col, p.row || 0, grid);
-    p.x = px.x;
-    p.y = px.y;
+function itemsOverlap(a, b) {
+  return a.col < b.col + b.cw && a.col + a.cw > b.col &&
+    a.row < b.row + b.ch && a.row + a.ch > b.row;
+}
+
+function canPlaceDisplayItem(item, placed) {
+  return !Object.values(placed).some((other) => itemsOverlap(item, other));
+}
+
+function buildCandidateSpans(target, id, grid) {
+  const minCw = Math.min(minWidgetCols(id), grid.cols);
+  const minCh = Math.min(minWidgetRows(id), grid.rows);
+  const maxCw = Math.max(minCw, Math.min(target.cw, grid.cols));
+  const maxCh = Math.max(minCh, Math.min(target.ch, grid.rows));
+  const candidates = [];
+  for (let cw = maxCw; cw >= minCw; cw--) {
+    for (let ch = maxCh; ch >= minCh; ch--) {
+      candidates.push({ cw, ch, area: cw * ch });
+    }
+  }
+  candidates.sort((a, b) => b.area - a.area || b.cw - a.cw || b.ch - a.ch);
+  return candidates;
+}
+
+function buildResponsiveLayout(allWidgetIds, positions, sizes, visibleWidgets, mergedDefaultPositions, mergedDefaultSpans, grid) {
+  const normalizedPositions = {};
+  const normalizedSpans = {};
+
+  allWidgetIds.forEach((id) => {
+    normalizedPositions[id] = normalizeLogicalPosition(positions[id], mergedDefaultPositions[id] || { col: 0, row: 0 });
+    normalizedSpans[id] = normalizeLogicalSpan(sizes[id], mergedDefaultSpans[id], id);
   });
 
-  return true;
+  const shift = getCenteredVisibleWidgetShift(allWidgetIds, normalizedPositions, normalizedSpans, visibleWidgets, grid);
+  const placed = {};
+
+  allWidgetIds.forEach((id) => {
+    if (visibleWidgets[id] === false) return;
+
+    const desiredPos = normalizedPositions[id];
+    const desiredSpan = normalizedSpans[id];
+    const desiredCol = Math.max(0, desiredPos.col + shift);
+    const candidates = buildCandidateSpans(desiredSpan, id, grid);
+    let placedItem = null;
+
+    for (const candidate of candidates) {
+      const maxCol = Math.max(0, grid.cols - candidate.cw);
+      const maxRow = Math.max(0, grid.rows - candidate.ch);
+      const direct = {
+        col: Math.max(0, Math.min(desiredCol, maxCol)),
+        row: Math.max(0, Math.min(desiredPos.row, maxRow)),
+        cw: candidate.cw,
+        ch: candidate.ch
+      };
+
+      if (canPlaceDisplayItem(direct, placed)) {
+        placedItem = direct;
+        break;
+      }
+
+      const free = findNearestFreeCell(direct.col, direct.row, candidate.cw, candidate.ch, placed, grid);
+      if (free) {
+        placedItem = { col: free.col, row: free.row, cw: candidate.cw, ch: candidate.ch };
+        break;
+      }
+    }
+
+    if (!placedItem) {
+      const fallback = candidates[candidates.length - 1] || {
+        cw: Math.min(minWidgetCols(id), grid.cols),
+        ch: Math.min(minWidgetRows(id), grid.rows)
+      };
+      placedItem = {
+        col: Math.max(0, Math.min(desiredCol, Math.max(0, grid.cols - fallback.cw))),
+        row: Math.max(0, Math.min(desiredPos.row, Math.max(0, grid.rows - fallback.ch))),
+        cw: fallback.cw,
+        ch: fallback.ch
+      };
+    }
+
+    placed[id] = placedItem;
+  });
+
+  return { normalizedPositions, normalizedSpans, placed };
 }
 
 async function bootstrap() {
@@ -637,29 +741,20 @@ async function bootstrap() {
       cw: Math.max(minCw, span.cw || minCw),
       ch: Math.max(minCh, span.ch || minCh)
     };
-    const clampCol = (col) => Math.max(0, Math.min(Math.round(col), Math.max(0, bootGrid.cols - spanNorm.cw)));
-    const clampRow = (row) => Math.max(0, Math.min(Math.round(row), Math.max(0, bootGrid.rows - spanNorm.ch)));
     if (Number.isFinite(p.col) && Number.isFinite(p.row)) {
-      const col = clampCol(p.col);
-      const row = clampRow(p.row);
-      const nextPos = { ...p, col, row };
+      const nextPos = normalizeLogicalPosition(p, p);
       if (logicalPositionChanged(p, nextPos)) normalizedLayoutChanged = true;
       positions[id] = nextPos;
     } else if (Number.isFinite(p.x) && Number.isFinite(p.y)) {
       const derivedCell = posToCell(p.x, p.y, bootGrid);
-      const col = clampCol(derivedCell.col);
-      const row = clampRow(derivedCell.row);
-      positions[id] = { ...p, col, row };
+      positions[id] = normalizeLogicalPosition({ ...p, col: derivedCell.col, row: derivedCell.row }, derivedCell);
       normalizedLayoutChanged = true;
     } else {
-      const def = mergedDefaultPositions[id] || { col: 0, row: 0 };
-      const col = clampCol(def.col);
-      const row = clampRow(def.row);
-      positions[id] = { col, row };
+      positions[id] = normalizeLogicalPosition(mergedDefaultPositions[id] || { col: 0, row: 0 });
       normalizedLayoutChanged = true;
     }
     const prevSize = sizes[id] || {};
-    const nextSize = { ...prevSize, cw: spanNorm.cw, ch: spanNorm.ch };
+    const nextSize = normalizeLogicalSpan(prevSize, spanNorm, id);
     if (logicalSizeChanged(prevSize, nextSize)) normalizedLayoutChanged = true;
     sizes[id] = nextSize;
     el.classList.toggle('hidden', visibleWidgets[id] === false);
@@ -667,37 +762,30 @@ async function bootstrap() {
 
   function relayoutWidgetsToGrid() {
     const grid = computeGrid(workspace);
-    centerVisibleWidgetColumns(allWidgetIds, positions, sizes, visibleWidgets, grid);
+    const { normalizedPositions, normalizedSpans, placed } = buildResponsiveLayout(
+      allWidgetIds,
+      positions,
+      sizes,
+      visibleWidgets,
+      mergedDefaultPositions,
+      mergedDefaultSpans,
+      grid
+    );
+
     allWidgetIds.forEach((id) => {
       const el = document.getElementById(id);
       if (!el) return;
-      const stored = sizes[id] || {};
-      let span = null;
-      if (Number.isFinite(stored.cw) && Number.isFinite(stored.ch)) {
-        span = { cw: stored.cw, ch: stored.ch };
-      } else if (Number.isFinite(stored.w) && Number.isFinite(stored.h)) {
-        const minCw = minWidgetCols(id);
-        const minCh = minWidgetRows(id);
-        span = {
-          cw: Math.max(minCw, Math.ceil(stored.w / grid.cellW)),
-          ch: Math.max(minCh, Math.ceil(stored.h / grid.cellH))
-        };
-      } else {
-        span = mergedDefaultSpans[id] || { cw: minWidgetCols(id), ch: minWidgetRows(id) };
-      }
-      const p = positions[id] || mergedDefaultPositions[id] || { col: 0, row: 0 };
-      const colRaw = Number.isFinite(p.col) ? p.col : 0;
-      const rowRaw = Number.isFinite(p.row) ? p.row : 0;
-      const minCw = minWidgetCols(id);
-      const minCh = minWidgetRows(id);
-      const spanNorm = { cw: Math.max(minCw, span.cw || minCw), ch: Math.max(minCh, span.ch || minCh) };
-      const col = Math.max(0, Math.min(Math.round(colRaw), Math.max(0, grid.cols - spanNorm.cw)));
-      const row = Math.max(0, Math.min(Math.round(rowRaw), Math.max(0, grid.rows - spanNorm.ch)));
-      const s = pxFromSpan(spanNorm, grid);
-      const px = cellToPos(col, row, grid);
+      const display = placed[id] || {
+        col: normalizedPositions[id]?.col || 0,
+        row: normalizedPositions[id]?.row || 0,
+        cw: Math.min(normalizedSpans[id]?.cw || minWidgetCols(id), grid.cols),
+        ch: Math.min(normalizedSpans[id]?.ch || minWidgetRows(id), grid.rows)
+      };
+      const s = pxFromSpan(display, grid, id);
+      const px = cellToPos(display.col, display.row, grid);
 
       positions[id] = { ...(positions[id] || {}), x: px.x, y: px.y };
-      sizes[id] = { ...(sizes[id] || {}), w: s.w, h: s.h, cw: spanNorm.cw, ch: spanNorm.ch };
+      sizes[id] = { ...(sizes[id] || {}), w: s.w, h: s.h };
       el.style.left = `${px.x}px`;
       el.style.top = `${px.y}px`;
       el.style.width = `${s.w}px`;
@@ -749,7 +837,7 @@ async function bootstrap() {
 
   const defaultSizes = {};
   Object.keys(mergedDefaultSpans).forEach((id) => {
-    defaultSizes[id] = pxFromSpan(mergedDefaultSpans[id], bootGrid);
+    defaultSizes[id] = pxFromSpan(mergedDefaultSpans[id], bootGrid, id);
   });
   await initSettings(appState, {
     defaultPositions: mergedDefaultPositions,
