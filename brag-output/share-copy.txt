@@ -1,0 +1,5 @@
+Tired of opening the exact same blank white search bar 50 times a day? 🪟✨
+
+We built Chrome Liquid Glass — a new tab experience featuring dynamic frosted glass cards, magnetic grid snapping, intelligent wallpaper subject awareness, and a macOS dock.
+
+100% Free & Open Source ➔ [Add to Chrome]

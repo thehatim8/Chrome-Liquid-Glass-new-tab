@@ -1,24 +1,18 @@
+import { detectMainObject } from './js/objectRecognition.js';
+import {
+  normalizeProvider,
+  detectAIProvider,
+  getGoogleFallbackCandidates,
+  normalizeModelName,
+  stringifyProviderError,
+  executeAIChatRequest
+} from './js/aiChat.js';
+
+export { normalizeModelName, stringifyProviderError, executeAIChatRequest };
+
 const DEFAULT_OPENROUTER_MODEL = 'openrouter/auto';
 const TODO_ALARM_PREFIX = 'todo-reminder:';
 const POMODORO_ALARM = 'pomodoro-end';
-
-function normalizeModelName(rawModel) {
-  const m = String(rawModel || '').trim();
-  if (!m) return DEFAULT_OPENROUTER_MODEL;
-  return m;
-}
-
-function stringifyProviderError(err) {
-  if (!err) return '';
-  if (typeof err === 'string') return err;
-  if (typeof err.error === 'string') return err.error;
-  if (typeof err.message === 'string') return err.message;
-  try {
-    return JSON.stringify(err);
-  } catch (_) {
-    return String(err);
-  }
-}
 
 function makeTodoId() {
   if (self.crypto?.randomUUID) return self.crypto.randomUUID();
@@ -193,7 +187,8 @@ async function markReminderSent(todoId) {
   return todos[idx];
 }
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+if (typeof chrome !== 'undefined' && chrome?.runtime?.onMessage?.addListener) {
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type === 'todos-updated') {
     scheduleTodoReminderAlarmsFromStorage()
       .then(() => sendResponse({ ok: true }))
@@ -223,103 +218,203 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
+  if (message?.type === 'wallpaper-uploaded') {
+    const imageSrc = message.imageSrc;
+
+    (async () => {
+      try {
+        const storedAI = await storageGet(['aiChatSettings']);
+        const storedProv = storedAI?.aiChatSettings?.provider;
+        const storedKey = (storedAI?.aiChatSettings?.providers?.[storedProv]?.apiKey || storedAI?.aiChatSettings?.apiKey || '').trim();
+        const storedModel = storedAI?.aiChatSettings?.providers?.[storedProv]?.model || storedAI?.aiChatSettings?.model || null;
+        const resolvedProv = detectAIProvider({ provider: storedProv, token: storedKey, model: storedModel });
+        const visionOpts = {
+          provider: resolvedProv,
+          apiKey: storedAI?.aiChatSettings?.providers?.[resolvedProv]?.apiKey || storedKey || null,
+          model: storedAI?.aiChatSettings?.providers?.[resolvedProv]?.model || storedModel || null
+        };
+        const result = await detectMainObject(imageSrc, visionOpts);
+        // Clear previous pending revert adjustment from old wallpaper before scheduling new adjustment
+        await new Promise((resolve) => chrome.storage.local.remove('pendingRevertAdjustment', resolve));
+
+        if (result && result.hasObject && result.boundingBox) {
+          const category = result.category || result.boundingBox?.category || 'object';
+          const label = result.label || result.boundingBox?.label || 'Main Object';
+          const semanticConfidence = result.semanticConfidence || result.confidence || 0.85;
+          const shapeType = result.shapeType || result.boundingBox?.shapeType || 'polygon';
+          const circle = result.circle || result.boundingBox?.circle || null;
+          const contour = result.contour || result.boundingBox?.contour || null;
+          const contours = result.contours || (result.contour ? [result.contour] : (result.boundingBox?.contour ? [result.boundingBox.contour] : null));
+          const svgPath = result.svgPath || result.boundingBox?.svgPath || null;
+          const svgPaths = result.svgPaths || (result.svgPath ? [result.svgPath] : null);
+          const smoothSvgPath = result.smoothSvgPath || result.boundingBox?.smoothSvgPath || null;
+          const smoothSvgPaths = result.smoothSvgPaths || (result.smoothSvgPath ? [result.smoothSvgPath] : null);
+          const rowExtents = result.rowExtents || result.boundingBox?.rowExtents || null;
+
+          const normBox = {
+            ...result.boundingBox,
+            category,
+            label,
+            semanticConfidence,
+            shapeType,
+            circle,
+            contour,
+            contours,
+            svgPath,
+            svgPaths,
+            smoothSvgPath,
+            smoothSvgPaths,
+            rowExtents
+          };
+
+          const rawBoxes = Array.isArray(result.boundingBoxes) && result.boundingBoxes.length > 0
+            ? result.boundingBoxes
+            : [normBox];
+
+          const normBoxes = rawBoxes.map((b, idx) => ({
+            ...b,
+            category: b.category || (idx === 0 ? category : 'object'),
+            label: b.label || (idx === 0 ? label : 'Main Object'),
+            shapeType: b.shapeType || (idx === 0 ? shapeType : 'polygon'),
+            circle: b.circle || (idx === 0 ? circle : null),
+            contour: b.contour || (contours && contours[idx]) || contour,
+            contours: b.contours || (contours ? [contours[idx] || contour] : null),
+            svgPath: b.svgPath || (svgPaths && svgPaths[idx]) || svgPath,
+            smoothSvgPath: b.smoothSvgPath || (smoothSvgPaths && smoothSvgPaths[idx]) || smoothSvgPath,
+            rowExtents: b.rowExtents || (idx === 0 ? rowExtents : null)
+          }));
+
+          await storageSet({
+            wallpaperObjectDetection: {
+              status: 'ready',
+              imageSrc,
+              hasObject: true,
+              category,
+              label,
+              semanticConfidence,
+              confidence: result.confidence,
+              boundingBox: normBox,
+              boundingBoxes: normBoxes,
+              imageDims: result.imageDims || null,
+              shapeType,
+              circle,
+              contour,
+              contours,
+              svgPath,
+              svgPaths,
+              smoothSvgPath,
+              smoothSvgPaths,
+              rowExtents,
+              centroid: result.centroid || null,
+              detectedAt: Date.now()
+            }
+          });
+        } else {
+          await storageSet({
+            wallpaperObjectDetection: {
+              status: 'ready',
+              imageSrc,
+              hasObject: false,
+              detectedAt: Date.now()
+            }
+          });
+        }
+        await new Promise((resolve) => chrome.storage.local.remove('scheduledAutoAdjustment', resolve));
+
+        sendResponse({ ok: true, status: 'completed' });
+      } catch (err) {
+        console.warn('Background wallpaper object detection failed:', err);
+        sendResponse({ ok: false, error: err?.message || 'Detection failed' });
+      }
+    })();
+
+    return true;
+  }
+
+  if (message?.type === 'detect-wallpaper-now') {
+    const imageSrc = message.imageSrc;
+    (async () => {
+      const storedAI = await storageGet(['aiChatSettings']);
+      const storedProv = storedAI?.aiChatSettings?.provider;
+      const storedKey = (storedAI?.aiChatSettings?.providers?.[storedProv]?.apiKey || storedAI?.aiChatSettings?.apiKey || '').trim();
+      const storedModel = storedAI?.aiChatSettings?.providers?.[storedProv]?.model || storedAI?.aiChatSettings?.model || null;
+      const resolvedProv = detectAIProvider({ provider: storedProv, token: storedKey, model: storedModel });
+      const visionOpts = {
+        provider: resolvedProv,
+        apiKey: storedAI?.aiChatSettings?.providers?.[resolvedProv]?.apiKey || storedKey || null,
+        model: storedAI?.aiChatSettings?.providers?.[resolvedProv]?.model || storedModel || null
+      };
+      return detectMainObject(imageSrc, visionOpts);
+    })()
+      .then((result) => sendResponse({ ok: true, result }))
+      .catch((err) => sendResponse({ ok: false, error: err?.message || 'Detection failed' }));
+    return true;
+  }
+
   if (!message || (message.type !== 'ai-chat' && message.type !== 'hf-chat')) return false;
 
-  const token = String(message.token || '').trim();
-  const messages = Array.isArray(message.messages) ? message.messages : [];
-  const model = normalizeModelName(message.model || DEFAULT_OPENROUTER_MODEL);
-
-  if (!token || !messages.length) {
-    sendResponse({ ok: false, status: 400, error: 'Missing token or messages.' });
-    return false;
-  }
-
-  (async () => {
-    try {
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-          'HTTP-Referer': 'https://liquid-new-tab.local',
-          'X-Title': 'Liquid New Tab Dashboard'
-        },
-        body: JSON.stringify({
-          model,
-          messages,
-          max_tokens: 220
-        })
-      });
-
-      const text = await response.text();
-      let parsed = null;
-      try {
-        parsed = JSON.parse(text);
-      } catch (_) {
-        parsed = null;
-      }
-
-      if (!response.ok) {
-        sendResponse({
-          ok: false,
-          status: response.status,
-          error: stringifyProviderError(parsed || text || 'Unknown OpenRouter error.'),
-          modelUsed: model
-        });
-        return;
-      }
-
-      sendResponse({
-        ok: true,
-        status: response.status,
-        data: parsed ?? text,
-        modelUsed: parsed?.model || model
-      });
-    } catch (err) {
-      sendResponse({
-        ok: false,
-        status: 0,
-        error: err?.message || 'Network error.'
-      });
-    }
-  })();
-
+  handleAIChatMessage(message)
+    .then((res) => sendResponse(res))
+    .catch((err) => sendResponse({ ok: false, status: 0, error: err?.message || 'Network error.' }));
   return true;
 });
+}
 
-chrome.alarms.onAlarm.addListener(async (alarm) => {
-  if (alarm?.name === POMODORO_ALARM) {
-    await advancePomodoro();
-    return;
-  }
-  if (!alarm?.name || !alarm.name.startsWith(TODO_ALARM_PREFIX)) return;
-  const todoId = alarm.name.slice(TODO_ALARM_PREFIX.length);
-  if (!todoId) return;
-
-  const todo = await markReminderSent(todoId);
-  if (!todo) return;
-
-  await notificationsCreate(`todo-reminder-${todoId}`, {
-    type: 'basic',
-    iconUrl: 'icons/icon128.png',
-    title: 'Todo Reminder',
-    message: todo.text || 'You have a pending task.',
-    priority: 2
+export async function handleAIChatMessage(message, fetchImpl = fetch) {
+  return executeAIChatRequest({
+    provider: message?.provider,
+    token: message?.token,
+    model: message?.model,
+    messages: message?.messages,
+    fetchImpl
   });
-});
+}
 
-chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName !== 'local') return;
-  if (!changes?.todos && !changes?.settings) return;
-  scheduleTodoReminderAlarmsFromStorage().catch(() => {});
-});
+if (typeof chrome !== 'undefined') {
+  if (chrome.alarms?.onAlarm?.addListener) {
+    chrome.alarms.onAlarm.addListener(async (alarm) => {
+      if (alarm?.name === POMODORO_ALARM) {
+        await advancePomodoro();
+        return;
+      }
+      if (!alarm?.name || !alarm.name.startsWith(TODO_ALARM_PREFIX)) return;
+      const todoId = alarm.name.slice(TODO_ALARM_PREFIX.length);
+      if (!todoId) return;
 
-chrome.runtime.onInstalled.addListener(() => {
-  scheduleTodoReminderAlarmsFromStorage().catch(() => {});
-});
+      const todo = await markReminderSent(todoId);
+      if (!todo) return;
 
-chrome.runtime.onStartup.addListener(() => {
-  scheduleTodoReminderAlarmsFromStorage().catch(() => {});
-});
+      await notificationsCreate(`todo-reminder-${todoId}`, {
+        type: 'basic',
+        iconUrl: 'icons/icon128.png',
+        title: 'Todo Reminder',
+        message: todo.text || 'You have a pending task.',
+        priority: 2
+      });
+    });
+  }
 
-scheduleTodoReminderAlarmsFromStorage().catch(() => {});
+  if (chrome.storage?.onChanged?.addListener) {
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName !== 'local') return;
+      if (!changes?.todos && !changes?.settings) return;
+      scheduleTodoReminderAlarmsFromStorage().catch(() => {});
+    });
+  }
+
+  if (chrome.runtime?.onInstalled?.addListener) {
+    chrome.runtime.onInstalled.addListener(() => {
+      scheduleTodoReminderAlarmsFromStorage().catch(() => {});
+    });
+  }
+
+  if (chrome.runtime?.onStartup?.addListener) {
+    chrome.runtime.onStartup.addListener(() => {
+      scheduleTodoReminderAlarmsFromStorage().catch(() => {});
+    });
+  }
+
+  if (typeof scheduleTodoReminderAlarmsFromStorage === 'function') {
+    scheduleTodoReminderAlarmsFromStorage().catch(() => {});
+  }
+}

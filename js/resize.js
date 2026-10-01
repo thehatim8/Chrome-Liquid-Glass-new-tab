@@ -9,28 +9,13 @@ import {
   cellToPos,
   findNearestFreeCell
 } from './grid.js';
-import { getLayoutConfig } from './layoutConfig.js';
+import { getLayoutConfig, minWidgetCols, minWidgetRows } from './layoutConfig.js';
 
 const PAD_X = 12;
 const PAD_Y = 12;
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
-// Per-widget minimum cell sizes (override the global layout minimum).
-const WIDGET_MIN_OVERRIDES = {
-  'widget-aichat': { cols: 3, rows: 3 }
-};
-
-function minWidgetCols(id) {
-  const base = Math.max(1, getLayoutConfig().minWidgetCols);
-  const o = id && WIDGET_MIN_OVERRIDES[id];
-  return o ? Math.max(base, o.cols) : base;
-}
-function minWidgetRows(id) {
-  const base = Math.max(1, getLayoutConfig().minWidgetRows);
-  const o = id && WIDGET_MIN_OVERRIDES[id];
-  return o ? Math.max(base, o.rows) : base;
-}
 function minW(grid, id) { return Math.max(32, Math.round(grid.cellW * minWidgetCols(id) - PAD_X)); }
 function minH(grid, id) { return Math.max(32, Math.round(grid.cellH * minWidgetRows(id) - PAD_Y)); }
 

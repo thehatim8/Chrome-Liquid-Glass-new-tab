@@ -3,6 +3,7 @@ import { getImageWidgetState, updateImageWidgetState } from './imageWidget.js';
 import { normalizeIconGridWidgets, renderIconGridWidgets } from './iconGrid.js';
 import { computeGrid, posToCell, sizeToCells } from './grid.js';
 import { setResizeOverlaysVisible, updateOverlayForWidget } from './resize.js';
+import { normalizeProvider, detectAIProvider } from './aiChat.js';
 const WEB3FORMS_ENDPOINT = 'https://api.web3forms.com/submit';
 const WEB3FORMS_ACCESS_KEY = '064c5b74-a292-4d22-9974-aa594882df1d';
 
@@ -202,8 +203,11 @@ export async function initSettings(appState, options = {}) {
   const sportsWidgetFootballApiKey = document.getElementById('sportsWidgetFootballApiKey');
   const sportsWidgetTournament = document.getElementById('sportsWidgetTournament');
   const saveSportsWidgetSettings = document.getElementById('saveSportsWidgetSettings');
+  const aiChatProvider = document.getElementById('aiChatProvider');
+  const aiChatSubheading = document.getElementById('aiChatSubheading');
   const aiChatApiKey = document.getElementById('aiChatApiKey');
   const aiChatModel = document.getElementById('aiChatModel');
+  const aiChatHint = document.getElementById('aiChatHint');
   const todoAutoReminderMode = document.getElementById('todoAutoReminderMode');
   const saveAiChatSettings = document.getElementById('saveAiChatSettings');
   const iconGridOpenModeBtn = document.getElementById('iconGridOpenModeBtn');
@@ -506,12 +510,25 @@ export async function initSettings(appState, options = {}) {
     await storage.set({ settings: appState.settings });
   }
 
+  function scheduleWallpaperBackgroundDetection(src) {
+    if (!src) return;
+    try {
+      chrome.runtime.sendMessage({
+        type: 'wallpaper-uploaded',
+        imageSrc: src
+      }, () => {
+        if (chrome.runtime.lastError) {}
+      });
+    } catch (_) {}
+  }
+
   async function setBackgroundAndPersist(path) {
     appState.background = path;
     applySettingsLocally();
     await storage.set({ background: appState.background });
     renderWallpaperGrid();
     await refreshAutoAccentFor(path);
+    scheduleWallpaperBackgroundDetection(path);
   }
 
   function todayLocalStamp() {
@@ -566,6 +583,7 @@ export async function initSettings(appState, options = {}) {
       });
       renderWallpaperGrid();
       await refreshAutoAccentFor(imageUrl);
+      scheduleWallpaperBackgroundDetection(imageUrl);
       return true;
     } catch (err) {
       console.error('settings:unsplash:refresh:error', err);
@@ -654,6 +672,7 @@ export async function initSettings(appState, options = {}) {
         updateOverlayForWidget(id);
         await storage.set({ visibleWidgets: appState.visibleWidgets });
         updateImageSettingsVisibility();
+        document.dispatchEvent(new CustomEvent('widget-visibility-changed', { detail: { id, visible: input.checked } }));
       });
 
       const text = document.createElement('span');
@@ -797,19 +816,218 @@ export async function initSettings(appState, options = {}) {
     }
   }
 
-  function initAIChatSettings() {
+  const AI_PROVIDER_CONFIG = {
+    openrouter: {
+      name: 'OpenRouter',
+      subheading: 'OpenRouter API',
+      apiKeyPlaceholder: 'OpenRouter API key (sk-or-...)',
+      modelPlaceholder: 'Model (e.g. openrouter/auto)',
+      hint: 'Powers the AI Chat widget. Get a free key at openrouter.ai.',
+      defaultModel: 'openrouter/auto',
+      presetModels: [
+        'openrouter/auto',
+        'google/gemini-2.0-flash-001',
+        'openai/gpt-4o-mini',
+        'meta-llama/llama-3.3-70b-instruct:free',
+        'liquid/lfm-2.5-1.2b-instruct:free'
+      ]
+    },
+    openai: {
+      name: 'OpenAI',
+      subheading: 'OpenAI API',
+      apiKeyPlaceholder: 'OpenAI API key (sk-...)',
+      modelPlaceholder: 'Model (e.g. gpt-4o-mini)',
+      hint: 'Powers the AI Chat widget. Get an API key at platform.openai.com.',
+      defaultModel: 'gpt-4o-mini',
+      presetModels: [
+        'gpt-4o-mini',
+        'gpt-4o',
+        'o3-mini',
+        'gpt-4.5-preview'
+      ]
+    },
+    google: {
+      name: 'Google AI Studio',
+      subheading: 'Google AI Studio API',
+      apiKeyPlaceholder: 'Google AI Studio API key (e.g. AIza... or AQ...)',
+      modelPlaceholder: 'Model (e.g. gemini-3.5-flash or gemini-2.0-flash)',
+      hint: 'Powers the AI Chat widget. Get a free key at aistudio.google.com.',
+      defaultModel: 'gemini-3.5-flash',
+      presetModels: [
+        'gemini-3.5-flash',
+        'gemini-3.5-flash-lite',
+        'gemini-2.0-flash',
+        'gemini-2.0-flash-lite',
+        'gemini-1.5-flash',
+        'gemini-1.5-pro',
+        'gemini-flash-latest'
+      ]
+    }
+  };
+
+  function updateAiChatProviderUI(provider) {
+    const norm = normalizeProvider(provider);
+    const cfg = AI_PROVIDER_CONFIG[norm] || AI_PROVIDER_CONFIG.openrouter;
+    if (aiChatSubheading) aiChatSubheading.textContent = cfg.subheading;
+    if (aiChatApiKey) aiChatApiKey.placeholder = cfg.apiKeyPlaceholder;
+    if (aiChatModel) aiChatModel.placeholder = cfg.modelPlaceholder;
+    if (aiChatHint) aiChatHint.textContent = cfg.hint;
+
+    const datalist = document.getElementById('aiChatModelList');
+    if (datalist && Array.isArray(cfg.presetModels)) {
+      datalist.innerHTML = '';
+      cfg.presetModels.forEach((m) => {
+        const opt = document.createElement('option');
+        opt.value = m;
+        datalist.appendChild(opt);
+      });
+    }
+  }
+
+  let draftAIChatProvider = 'openrouter';
+  let draftAIChatProviders = {};
+
+  function syncAIChatForm(provider) {
+    const norm = normalizeProvider(provider);
+    draftAIChatProvider = norm;
+    if (aiChatProvider) aiChatProvider.value = norm;
+    updateAiChatProviderUI(norm);
+    const pData = draftAIChatProviders[norm] || {};
+    if (aiChatApiKey) aiChatApiKey.value = pData.apiKey || '';
+    if (aiChatModel) aiChatModel.value = pData.model || AI_PROVIDER_CONFIG[norm].defaultModel;
+  }
+
+  function resetAIChatSettingsUI() {
     appState.aiChatSettings = appState.aiChatSettings || {};
-    if (aiChatApiKey) aiChatApiKey.value = appState.aiChatSettings.apiKey || '';
-    if (aiChatModel) aiChatModel.value = appState.aiChatSettings.model || 'openrouter/auto';
+    let savedProvider = normalizeProvider(appState.aiChatSettings.provider || 'openrouter');
+    const existingKey = (appState.aiChatSettings.apiKey || '').trim().replace(/^Bearer\s+/i, '').replace(/^["']|["']$/g, '').trim();
+    const existingModel = (appState.aiChatSettings.model || '').trim();
+    if (savedProvider === 'openrouter' && (existingKey.startsWith('AIza') || existingKey.startsWith('AQ') || existingModel.toLowerCase().startsWith('gemini-'))) {
+      savedProvider = 'google';
+    } else if (savedProvider === 'openrouter' && (existingKey.startsWith('sk-proj') || (existingKey.startsWith('sk-') && !existingKey.startsWith('sk-or-')) || existingModel.toLowerCase().startsWith('gpt-') || existingModel.toLowerCase().startsWith('o1-') || existingModel.toLowerCase().startsWith('o3-'))) {
+      savedProvider = 'openai';
+    }
+
+    const hasProviders = !!(appState.aiChatSettings.providers && typeof appState.aiChatSettings.providers === 'object');
+    const rawP = hasProviders ? appState.aiChatSettings.providers : {};
+
+    draftAIChatProvider = savedProvider;
+    draftAIChatProviders = {
+      openrouter: {
+        apiKey: (typeof rawP.openrouter?.apiKey === 'string' ? rawP.openrouter.apiKey : (savedProvider === 'openrouter' ? existingKey : '')).trim(),
+        model: (typeof rawP.openrouter?.model === 'string' && rawP.openrouter.model.trim()) ? rawP.openrouter.model.trim() : (savedProvider === 'openrouter' && existingModel ? existingModel : AI_PROVIDER_CONFIG.openrouter.defaultModel)
+      },
+      openai: {
+        apiKey: (typeof rawP.openai?.apiKey === 'string' ? rawP.openai.apiKey : (savedProvider === 'openai' ? existingKey : '')).trim(),
+        model: (typeof rawP.openai?.model === 'string' && rawP.openai.model.trim()) ? rawP.openai.model.trim() : (savedProvider === 'openai' && existingModel ? existingModel : AI_PROVIDER_CONFIG.openai.defaultModel)
+      },
+      google: {
+        apiKey: (typeof rawP.google?.apiKey === 'string' ? rawP.google.apiKey : (savedProvider === 'google' || existingKey.startsWith('AIza') || existingKey.startsWith('AQ') ? existingKey : '')).trim(),
+        model: (typeof rawP.google?.model === 'string' && rawP.google.model.trim()) ? rawP.google.model.trim() : (savedProvider === 'google' && existingModel ? existingModel : (existingModel.toLowerCase().startsWith('gemini-') ? existingModel : AI_PROVIDER_CONFIG.google.defaultModel))
+      }
+    };
+
+    syncAIChatForm(savedProvider);
+  }
+
+  function persistAIChatDraft(showFeedback = false) {
+    const activeProv = normalizeProvider(aiChatProvider ? aiChatProvider.value : draftAIChatProvider);
+    const cfg = AI_PROVIDER_CONFIG[activeProv] || AI_PROVIDER_CONFIG.openrouter;
+    const enteredKey = (aiChatApiKey?.value || '').trim().replace(/^Bearer\s+/i, '').replace(/^["']|["']$/g, '').trim();
+    const enteredModel = (aiChatModel?.value || '').trim() || cfg.defaultModel;
+
+    draftAIChatProviders[activeProv] = {
+      apiKey: enteredKey,
+      model: enteredModel
+    };
+
+    appState.aiChatSettings = {
+      provider: activeProv,
+      apiKey: enteredKey,
+      model: enteredModel,
+      providers: JSON.parse(JSON.stringify(draftAIChatProviders))
+    };
+
+    storage.set({ aiChatSettings: appState.aiChatSettings });
+
+    const noKeyHint = document.getElementById('aiChatNoKeyHint');
+    if (noKeyHint) {
+      if (enteredKey) {
+        noKeyHint.classList.add('hidden');
+      } else {
+        noKeyHint.textContent = `Set your ${cfg.name} API key in Settings → AI Chat`;
+        noKeyHint.classList.remove('hidden');
+      }
+    }
+
+    if (showFeedback) {
+      alert('AI Chat settings saved.');
+    }
+  }
+
+  function initAIChatSettings() {
+    resetAIChatSettingsUI();
+
+    if (aiChatProvider) {
+      aiChatProvider.addEventListener('change', () => {
+        const oldProv = draftAIChatProvider;
+        const currentInputKey = (aiChatApiKey?.value || '').trim().replace(/^Bearer\s+/i, '').replace(/^["']|["']$/g, '').trim();
+        const currentInputModel = (aiChatModel?.value || '').trim();
+        const newProv = normalizeProvider(aiChatProvider.value);
+
+        // Smart migration if user typed a key or model before switching dropdown
+        if ((currentInputKey.startsWith('AIza') || currentInputKey.startsWith('AQ') || currentInputModel.toLowerCase().startsWith('gemini-')) && newProv === 'google') {
+          if (currentInputKey) draftAIChatProviders.google.apiKey = currentInputKey;
+          if (currentInputModel) draftAIChatProviders.google.model = currentInputModel;
+        } else if ((currentInputKey.startsWith('sk-proj') || (currentInputKey.startsWith('sk-') && !currentInputKey.startsWith('sk-or-')) || currentInputModel.toLowerCase().startsWith('gpt-') || currentInputModel.toLowerCase().startsWith('o1-') || currentInputModel.toLowerCase().startsWith('o3-')) && newProv === 'openai') {
+          if (currentInputKey) draftAIChatProviders.openai.apiKey = currentInputKey;
+          if (currentInputModel) draftAIChatProviders.openai.model = currentInputModel;
+        } else if (currentInputKey.startsWith('sk-or-') && newProv === 'openrouter') {
+          if (currentInputKey) draftAIChatProviders.openrouter.apiKey = currentInputKey;
+          if (currentInputModel) draftAIChatProviders.openrouter.model = currentInputModel;
+        } else if (draftAIChatProviders[oldProv]) {
+          draftAIChatProviders[oldProv].apiKey = currentInputKey;
+          draftAIChatProviders[oldProv].model = currentInputModel || AI_PROVIDER_CONFIG[oldProv].defaultModel;
+        }
+
+        syncAIChatForm(newProv);
+        persistAIChatDraft(false);
+      });
+    }
+
+    let aiChatSaveTimer = null;
+    const debouncedSave = () => {
+      clearTimeout(aiChatSaveTimer);
+      aiChatSaveTimer = setTimeout(() => persistAIChatDraft(false), 300);
+    };
+
+    if (aiChatApiKey) {
+      aiChatApiKey.addEventListener('input', debouncedSave);
+      aiChatApiKey.addEventListener('change', () => persistAIChatDraft(false));
+      aiChatApiKey.addEventListener('blur', () => persistAIChatDraft(false));
+      aiChatApiKey.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          persistAIChatDraft(true);
+        }
+      });
+    }
+
+    if (aiChatModel) {
+      aiChatModel.addEventListener('input', debouncedSave);
+      aiChatModel.addEventListener('change', () => persistAIChatDraft(false));
+      aiChatModel.addEventListener('blur', () => persistAIChatDraft(false));
+      aiChatModel.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          persistAIChatDraft(true);
+        }
+      });
+    }
 
     if (saveAiChatSettings) {
-      saveAiChatSettings.addEventListener('click', async () => {
-        appState.aiChatSettings = {
-          apiKey: (aiChatApiKey?.value || '').trim(),
-          model: (aiChatModel?.value || 'openrouter/auto').trim() || 'openrouter/auto'
-        };
-        await storage.set({ aiChatSettings: appState.aiChatSettings });
-        alert('AI Chat settings saved.');
+      saveAiChatSettings.addEventListener('click', () => {
+        persistAIChatDraft(true);
       });
     }
   }
@@ -1079,6 +1297,7 @@ export async function initSettings(appState, options = {}) {
   });
 
   open.addEventListener('click', () => {
+    resetAIChatSettingsUI();
     renderWidgetVisibility();
     applyColorTheme(appState.settings.colorTheme || 'default');
     modal.classList.remove('hidden');
@@ -1466,10 +1685,27 @@ export async function initSettings(appState, options = {}) {
       applySettingsLocally();
       await storage.set({ background: appState.background });
       await refreshAutoAccentFor(uploadedDataUrl);
+      scheduleWallpaperBackgroundDetection(uploadedDataUrl);
       bgUpload.value = '';
       uploadedDataUrl = null;
       useUploadedBg.disabled = true;
       useUploadedBg.textContent = 'Use Uploaded';
+    });
+  }
+
+  const inspectDetectedSubjectBtn = document.getElementById('inspectDetectedSubjectBtn');
+  if (inspectDetectedSubjectBtn) {
+    inspectDetectedSubjectBtn.addEventListener('click', () => {
+      if (modal) modal.classList.add('hidden');
+      document.dispatchEvent(new CustomEvent('inspect-wallpaper-detection'));
+    });
+  }
+
+  const adjustWidgetsNowBtn = document.getElementById('adjustWidgetsNowBtn');
+  if (adjustWidgetsNowBtn) {
+    adjustWidgetsNowBtn.addEventListener('click', () => {
+      if (modal) modal.classList.add('hidden');
+      document.dispatchEvent(new CustomEvent('trigger-wallpaper-auto-adjust'));
     });
   }
 
@@ -1482,6 +1718,7 @@ export async function initSettings(appState, options = {}) {
       await storage.set({ background: appState.background });
       renderWallpaperGrid();
       await refreshAutoAccentFor(url);
+      scheduleWallpaperBackgroundDetection(url);
     });
   }
 
@@ -1530,6 +1767,7 @@ export async function initSettings(appState, options = {}) {
     clearBg.addEventListener('click', async () => {
       appState.background = null;
       await storage.set({ background: null });
+      await storage.remove(['scheduledAutoAdjustment', 'pendingRevertAdjustment', 'wallpaperObjectDetection']);
       applySettingsLocally();
       renderWallpaperGrid();
     });

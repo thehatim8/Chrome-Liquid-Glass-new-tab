@@ -6,7 +6,7 @@ import { initClock } from './clock.js';
 import { initTodo } from './todo.js';
 import { initDock } from './dock.js';
 import { initSettings } from './settings.js';
-import { makeResizable, setResizeOverlaysVisible } from './resize.js';
+import { makeResizable, setResizeOverlaysVisible, syncResizeOverlays } from './resize.js';
 import { initImageWidget } from './imageWidget.js';
 import { updatePersistentGrid, computeGrid, posToCell, cellToPos, findNearestFreeCell } from './grid.js';
 import { initNotes } from './notes.js';
@@ -16,8 +16,11 @@ import { initPomodoro } from './pomodoro.js';
 import { initSportsWidget } from './sports.js';
 import { initWeather } from './weather.js';
 import { initCurrency } from './currency.js';
-import { initAIChat } from './aiChat.js';
-import { setLayoutConfig, getLayoutConfig, normalizeLayoutConfig } from './layoutConfig.js';
+import { initAIChat, normalizeProvider } from './aiChat.js';
+import { setLayoutConfig, getLayoutConfig, normalizeLayoutConfig, minWidgetCols, minWidgetRows } from './layoutConfig.js';
+import { mapObjectBoxToGrid, adjustWidgetsAwayFromObject, revertWidgetAdjustments, cellBoxesOverlap } from './objectAwareLayout.js';
+import { detectMainObject } from './objectRecognition.js';
+import { showDetectionOutline, hideDetectionOutline } from './detectionOverlay.js';
 import {
   normalizeIconGridWidgets,
   ensureIconGridWidgetsInWorkspace,
@@ -108,8 +111,14 @@ const DEFAULT_SPORTS_SETTINGS = {
   tournament: "ICC Men's T20 World Cup"
 };
 const DEFAULT_AI_CHAT_SETTINGS = {
+  provider: 'openrouter',
   apiKey: '',
-  model: 'openrouter/auto'
+  model: 'openrouter/auto',
+  providers: {
+    openrouter: { apiKey: '', model: 'openrouter/auto' },
+    openai: { apiKey: '', model: 'gpt-4o-mini' },
+    google: { apiKey: '', model: 'gemini-flash-latest' }
+  }
 };
 const DEFAULT_UNSPLASH_SETTINGS = {
   autoDaily: false,
@@ -217,6 +226,36 @@ function serializeLogicalSizes(sizeMap) {
   return out;
 }
 
+function snapshotPositions(positionMap) {
+  const out = {};
+  Object.keys(positionMap || {}).forEach((id) => {
+    const p = positionMap[id] || {};
+    if (!Number.isFinite(p.col) || !Number.isFinite(p.row)) return;
+    out[id] = {
+      col: p.col,
+      row: p.row,
+      ...(Number.isFinite(p.x) ? { x: p.x } : {}),
+      ...(Number.isFinite(p.y) ? { y: p.y } : {})
+    };
+  });
+  return out;
+}
+
+function snapshotSizes(sizeMap) {
+  const out = {};
+  Object.keys(sizeMap || {}).forEach((id) => {
+    const s = sizeMap[id] || {};
+    if (!Number.isFinite(s.cw) || !Number.isFinite(s.ch)) return;
+    out[id] = {
+      cw: s.cw,
+      ch: s.ch,
+      ...(Number.isFinite(s.w) ? { w: s.w } : {}),
+      ...(Number.isFinite(s.h) ? { h: s.h } : {})
+    };
+  });
+  return out;
+}
+
 function sanitizeDefaultImageWidget(state) {
   if (!state || typeof state !== 'object') return { ...DEFAULT_IMAGE_WIDGET };
   const src = typeof state.src === 'string' ? state.src : '';
@@ -264,15 +303,85 @@ function askUserNameViaModal() {
   });
 }
 
-function sanitizeAIChatSettings(state) {
+export function sanitizeAIChatSettings(state) {
   const src = (state && typeof state === 'object') ? state : {};
-  const apiKey = typeof src.apiKey === 'string' ? src.apiKey : '';
-  const rawModel = typeof src.model === 'string' ? src.model.trim() : '';
-  const looksLikeOldHFDefault = rawModel === 'HuggingFaceTB/SmolLM3-3B';
-  const looksLikeHFInferenceSuffix = rawModel.endsWith(':hf-inference');
-  let model = rawModel || DEFAULT_AI_CHAT_SETTINGS.model;
-  if (looksLikeOldHFDefault || looksLikeHFInferenceSuffix) model = DEFAULT_AI_CHAT_SETTINGS.model;
-  return { apiKey, model };
+  let provider = normalizeProvider(src.provider || 'openrouter');
+
+  const hasProvidersMap = !!(src.providers && typeof src.providers === 'object');
+  const rawProviders = hasProvidersMap ? src.providers : {};
+  const providers = {
+    openrouter: {
+      apiKey: typeof rawProviders.openrouter?.apiKey === 'string' ? rawProviders.openrouter.apiKey : '',
+      model: typeof rawProviders.openrouter?.model === 'string' && rawProviders.openrouter.model.trim() ? rawProviders.openrouter.model.trim() : 'openrouter/auto'
+    },
+    openai: {
+      apiKey: typeof rawProviders.openai?.apiKey === 'string' ? rawProviders.openai.apiKey : '',
+      model: typeof rawProviders.openai?.model === 'string' && rawProviders.openai.model.trim() ? rawProviders.openai.model.trim() : 'gpt-4o-mini'
+    },
+    google: {
+      apiKey: typeof rawProviders.google?.apiKey === 'string' ? rawProviders.google.apiKey : '',
+      model: typeof rawProviders.google?.model === 'string' && rawProviders.google.model.trim() ? rawProviders.google.model.trim() : 'gemini-flash-latest'
+    }
+  };
+
+  const topApiKey = typeof src.apiKey === 'string' ? src.apiKey.replace(/^Bearer\s+/i, '').replace(/^["']|["']$/g, '').trim() : '';
+  const topModel = typeof src.model === 'string' ? src.model.trim() : '';
+
+  // Auto-detect provider if default is openrouter without key but credentials/models point to google or openai
+  if (provider === 'openrouter' && !providers.openrouter.apiKey) {
+    if (topApiKey.startsWith('AIza') || topApiKey.startsWith('AQ') || topModel.startsWith('gemini-') || providers.google.apiKey.startsWith('AIza') || providers.google.apiKey.startsWith('AQ')) {
+      provider = 'google';
+    } else if (topApiKey.startsWith('sk-proj-') || topModel.startsWith('gpt-') || providers.openai.apiKey.startsWith('sk-proj-')) {
+      provider = 'openai';
+    }
+  }
+
+  // Only migrate top-level credentials if providers map was not previously established,
+  // or if top-level credentials unambiguously match the provider
+  if (!hasProvidersMap) {
+    if (topApiKey && !providers[provider].apiKey) {
+      providers[provider].apiKey = topApiKey;
+    }
+    if (topModel && providers[provider].model === DEFAULT_AI_CHAT_SETTINGS.providers[provider].model) {
+      providers[provider].model = topModel;
+    }
+  } else {
+    // When providers map exists, only adopt top-level if the active provider slot is empty/default
+    // AND the top-level values match that provider's signature
+    if (provider === 'google') {
+      if (!providers.google.apiKey && (topApiKey.startsWith('AIza') || topApiKey.startsWith('AQ'))) {
+        providers.google.apiKey = topApiKey;
+      }
+      if (providers.google.model === DEFAULT_AI_CHAT_SETTINGS.providers.google.model && (topModel.toLowerCase().startsWith('gemini-') || topModel.toLowerCase().startsWith('models/gemini-') || topModel.toLowerCase().startsWith('google/gemini-'))) {
+        providers.google.model = topModel;
+      }
+    } else if (provider === 'openai') {
+      if (!providers.openai.apiKey && (topApiKey.startsWith('sk-proj-') || (topApiKey.startsWith('sk-') && !topApiKey.startsWith('sk-or-')))) {
+        providers.openai.apiKey = topApiKey;
+      }
+      if (providers.openai.model === DEFAULT_AI_CHAT_SETTINGS.providers.openai.model && (topModel.toLowerCase().startsWith('gpt-') || topModel.toLowerCase().startsWith('o1-') || topModel.toLowerCase().startsWith('o3-'))) {
+        providers.openai.model = topModel;
+      }
+    } else if (provider === 'openrouter') {
+      if (!providers.openrouter.apiKey && topApiKey.startsWith('sk-or-')) {
+        providers.openrouter.apiKey = topApiKey;
+      }
+      if (providers.openrouter.model === DEFAULT_AI_CHAT_SETTINGS.providers.openrouter.model && !topModel.startsWith('gemini-') && (topModel.includes('/') || topModel === 'openrouter/auto')) {
+        providers.openrouter.model = topModel;
+      }
+    }
+  }
+
+  const looksLikeOldHFDefault = providers.openrouter.model === 'HuggingFaceTB/SmolLM3-3B';
+  const looksLikeHFInferenceSuffix = providers.openrouter.model.endsWith(':hf-inference');
+  if (looksLikeOldHFDefault || looksLikeHFInferenceSuffix) {
+    providers.openrouter.model = 'openrouter/auto';
+  }
+
+  const apiKey = providers[provider].apiKey || '';
+  const model = providers[provider].model || DEFAULT_AI_CHAT_SETTINGS.providers[provider].model;
+
+  return { provider, apiKey, model, providers };
 }
 
 function sanitizeUnsplashSettings(state) {
@@ -297,22 +406,7 @@ async function loadDefaultProfile() {
   }
 }
 
-// Per-widget minimum cell sizes (override the global layout minimum).
-const WIDGET_MIN_OVERRIDES = {
-  'widget-aichat': { cols: 3, rows: 3 }
-};
 
-function minWidgetCols(id) {
-  const base = Math.max(1, getLayoutConfig().minWidgetCols);
-  const o = id && WIDGET_MIN_OVERRIDES[id];
-  return o ? Math.max(base, o.cols) : base;
-}
-
-function minWidgetRows(id) {
-  const base = Math.max(1, getLayoutConfig().minWidgetRows);
-  const o = id && WIDGET_MIN_OVERRIDES[id];
-  return o ? Math.max(base, o.rows) : base;
-}
 
 function pxFromSpan(span, grid, id) {
   const minCw = minWidgetCols(id);
@@ -406,7 +500,7 @@ function buildCandidateSpans(target, id, grid) {
   return candidates;
 }
 
-function buildResponsiveLayout(allWidgetIds, positions, sizes, visibleWidgets, mergedDefaultPositions, mergedDefaultSpans, grid) {
+function buildResponsiveLayout(allWidgetIds, positions, sizes, visibleWidgets, mergedDefaultPositions, mergedDefaultSpans, grid, options = {}) {
   const normalizedPositions = {};
   const normalizedSpans = {};
 
@@ -415,7 +509,10 @@ function buildResponsiveLayout(allWidgetIds, positions, sizes, visibleWidgets, m
     normalizedSpans[id] = normalizeLogicalSpan(sizes[id], mergedDefaultSpans[id], id);
   });
 
-  const shift = getCenteredVisibleWidgetShift(allWidgetIds, normalizedPositions, normalizedSpans, visibleWidgets, grid);
+  const shouldCenter = !options.disableCentering && !options.avoidObjectBox;
+  const shift = shouldCenter
+    ? getCenteredVisibleWidgetShift(allWidgetIds, normalizedPositions, normalizedSpans, visibleWidgets, grid)
+    : 0;
   const placed = {};
 
   allWidgetIds.forEach((id) => {
@@ -437,12 +534,13 @@ function buildResponsiveLayout(allWidgetIds, positions, sizes, visibleWidgets, m
         ch: candidate.ch
       };
 
-      if (canPlaceDisplayItem(direct, placed)) {
+      const overlapsObj = options.avoidObjectBox && cellBoxesOverlap(direct, options.avoidObjectBox);
+      if (!overlapsObj && canPlaceDisplayItem(direct, placed)) {
         placedItem = direct;
         break;
       }
 
-      const free = findNearestFreeCell(direct.col, direct.row, candidate.cw, candidate.ch, placed, grid);
+      const free = findNearestFreeCell(direct.col, direct.row, candidate.cw, candidate.ch, placed, grid, options.avoidObjectBox);
       if (free) {
         placedItem = { col: free.col, row: free.row, cw: candidate.cw, ch: candidate.ch };
         break;
@@ -450,16 +548,53 @@ function buildResponsiveLayout(allWidgetIds, positions, sizes, visibleWidgets, m
     }
 
     if (!placedItem) {
-      const fallback = candidates[candidates.length - 1] || {
-        cw: Math.min(minWidgetCols(id), grid.cols),
-        ch: Math.min(minWidgetRows(id), grid.rows)
-      };
-      placedItem = {
-        col: Math.max(0, Math.min(desiredCol, Math.max(0, grid.cols - fallback.cw))),
-        row: Math.max(0, Math.min(desiredPos.row, Math.max(0, grid.rows - fallback.ch))),
-        cw: fallback.cw,
-        ch: fallback.ch
-      };
+      const minCw = Math.min(minWidgetCols(id), grid.cols);
+      const minCh = Math.min(minWidgetRows(id), grid.rows);
+      let freeFallback = findNearestFreeCell(desiredCol, desiredPos.row, minCw, minCh, placed, grid, options.avoidObjectBox);
+      
+      // If none found nearby, search entire grid for any free cell avoiding obstacle and placed items
+      if (!freeFallback && options.avoidObjectBox) {
+        for (let r = 0; r <= grid.rows - minCh && !freeFallback; r++) {
+          for (let c = 0; c <= grid.cols - minCw && !freeFallback; c++) {
+            const testCand = { col: c, row: r, cw: minCw, ch: minCh };
+            if (!cellBoxesOverlap(testCand, options.avoidObjectBox) && canPlaceDisplayItem(testCand, placed)) {
+              freeFallback = { col: c, row: r };
+            }
+          }
+        }
+      }
+
+      if (!freeFallback) {
+        freeFallback = findNearestFreeCell(desiredCol, desiredPos.row, minCw, minCh, placed, grid, null);
+      }
+
+      if (freeFallback) {
+        placedItem = {
+          col: freeFallback.col,
+          row: freeFallback.row,
+          cw: minCw,
+          ch: minCh
+        };
+      } else {
+        // Find ANY cell that does not overlap placed widgets
+        for (let r = 0; r <= grid.rows - minCh && !placedItem; r++) {
+          for (let c = 0; c <= grid.cols - minCw && !placedItem; c++) {
+            const testCand = { col: c, row: r, cw: minCw, ch: minCh };
+            if (canPlaceDisplayItem(testCand, placed)) {
+              placedItem = testCand;
+            }
+          }
+        }
+
+        if (!placedItem) {
+          placedItem = {
+            col: Math.max(0, Math.min(desiredCol, Math.max(0, grid.cols - minCw))),
+            row: Math.max(0, Math.min(desiredPos.row, Math.max(0, grid.rows - minCh))),
+            cw: minCw,
+            ch: minCh
+          };
+        }
+      }
     }
 
     placed[id] = placedItem;
@@ -469,10 +604,11 @@ function buildResponsiveLayout(allWidgetIds, positions, sizes, visibleWidgets, m
 }
 
 async function bootstrap() {
-  // Disable native context menu across the dashboard UI.
-  document.addEventListener('contextmenu', (e) => {
-    e.preventDefault();
-  });
+  try {
+    // Disable native context menu across the dashboard UI.
+    document.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+    });
 
   const profile = await loadDefaultProfile();
   const profileData = profile?.data || {};
@@ -548,7 +684,10 @@ async function bootstrap() {
     'unsplashSettings',
     'dockOpenMode',
     'iconGridOpenMode',
-    'layoutConfig'
+    'layoutConfig',
+    'scheduledAutoAdjustment',
+    'pendingRevertAdjustment',
+    'wallpaperObjectDetection'
   ]);
   const layoutConfig = hasProfileLayout
     ? profileLayoutConfig
@@ -611,7 +750,12 @@ async function bootstrap() {
   if (!hasStoredValue(res.aiChatSettings)) defaultsToPersist.aiChatSettings = defaultAIChatSettings;
   if (hasStoredValue(res.aiChatSettings)) {
     const nextAI = sanitizeAIChatSettings(res.aiChatSettings);
-    if (nextAI.model !== res.aiChatSettings?.model || nextAI.apiKey !== (res.aiChatSettings?.apiKey || '')) {
+    if (
+      nextAI.provider !== res.aiChatSettings?.provider ||
+      nextAI.model !== res.aiChatSettings?.model ||
+      nextAI.apiKey !== (res.aiChatSettings?.apiKey || '') ||
+      JSON.stringify(nextAI.providers) !== JSON.stringify(res.aiChatSettings?.providers)
+    ) {
       defaultsToPersist.aiChatSettings = nextAI;
     }
   }
@@ -707,12 +851,13 @@ async function bootstrap() {
   };
   setGreeting(userName);
 
-  if (!userName) {
-    const typedName = await askUserNameViaModal();
-    const nextName = typedName || 'Friend';
-    appState.userName = nextName;
-    setGreeting(nextName);
-    await storage.set({ userName: nextName, userNameOnboarded: true });
+  if (!userName && !hasUserNameOnboarded) {
+    askUserNameViaModal().then((typedName) => {
+      const nextName = typedName || 'Friend';
+      appState.userName = nextName;
+      setGreeting(nextName);
+      storage.set({ userName: nextName, userNameOnboarded: true });
+    });
   }
 
   // Normalize stored logical layout. Pixel x/y/w/h are viewport-specific, so
@@ -760,40 +905,60 @@ async function bootstrap() {
     el.classList.toggle('hidden', visibleWidgets[id] === false);
   });
 
+  let currentObjectBox = null;
+  let activeDetectionBoundingBox = null;
+  let activeDetectionBoundingBoxes = null;
+  let activeDetectionImageDims = null;
+
   function relayoutWidgetsToGrid() {
     const grid = computeGrid(workspace);
-    const { normalizedPositions, normalizedSpans, placed } = buildResponsiveLayout(
-      allWidgetIds,
-      positions,
-      sizes,
-      visibleWidgets,
-      mergedDefaultPositions,
-      mergedDefaultSpans,
-      grid
-    );
-
     allWidgetIds.forEach((id) => {
       const el = document.getElementById(id);
       if (!el) return;
-      const display = placed[id] || {
-        col: normalizedPositions[id]?.col || 0,
-        row: normalizedPositions[id]?.row || 0,
-        cw: Math.min(normalizedSpans[id]?.cw || minWidgetCols(id), grid.cols),
-        ch: Math.min(normalizedSpans[id]?.ch || minWidgetRows(id), grid.rows)
+      const stored = sizes[id] || {};
+      let span = null;
+      if (Number.isFinite(stored.cw) && Number.isFinite(stored.ch)) {
+        span = { cw: stored.cw, ch: stored.ch };
+      } else if (Number.isFinite(stored.w) && Number.isFinite(stored.h)) {
+        const minCw = minWidgetCols(id);
+        const minCh = minWidgetRows(id);
+        span = {
+          cw: Math.max(minCw, Math.ceil(stored.w / grid.cellW)),
+          ch: Math.max(minCh, Math.ceil(stored.h / grid.cellH))
+        };
+      } else {
+        span = mergedDefaultSpans[id] || { cw: minWidgetCols(id), ch: minWidgetRows(id) };
+      }
+      const p = positions[id] || mergedDefaultPositions[id] || { col: 0, row: 0 };
+      const colRaw = Number.isFinite(p.col) ? p.col : 0;
+      const rowRaw = Number.isFinite(p.row) ? p.row : 0;
+      const minCw = minWidgetCols(id);
+      const minCh = minWidgetRows(id);
+      const spanNorm = {
+        cw: Math.max(minCw, Math.min(grid.cols, span.cw || minCw)),
+        ch: Math.max(minCh, Math.min(grid.rows, span.ch || minCh))
       };
-      const s = pxFromSpan(display, grid, id);
-      const px = cellToPos(display.col, display.row, grid);
+      const col = Math.max(0, Math.min(Math.round(colRaw), Math.max(0, grid.cols - spanNorm.cw)));
+      const row = Math.max(0, Math.min(Math.round(rowRaw), Math.max(0, grid.rows - spanNorm.ch)));
+      const s = pxFromSpan(spanNorm, grid, id);
+      const px = cellToPos(col, row, grid);
 
-      positions[id] = { ...(positions[id] || {}), x: px.x, y: px.y };
-      sizes[id] = { ...(sizes[id] || {}), w: s.w, h: s.h };
+      positions[id] = { ...(positions[id] || {}), col, row, x: px.x, y: px.y };
+      sizes[id] = { ...(sizes[id] || {}), cw: spanNorm.cw, ch: spanNorm.ch, w: s.w, h: s.h };
       el.style.left = `${px.x}px`;
       el.style.top = `${px.y}px`;
       el.style.width = `${s.w}px`;
       el.style.height = `${s.h}px`;
+      el.classList.toggle('hidden', visibleWidgets[id] === false);
     });
 
     updatePersistentGrid(workspace);
+    syncResizeOverlays();
   }
+
+  // Position and display widgets immediately so the dashboard is visible
+  relayoutWidgetsToGrid();
+  document.body.classList.remove('app-booting');
 
   if (normalizedLayoutChanged) {
     await storage.set({
@@ -802,12 +967,426 @@ async function bootstrap() {
     });
   }
 
+  // --- Smart Wallpaper Object Recognition & Automatic Widget Adjustment ---
+  const autoAdjustHintEl = document.getElementById('autoAdjustHint');
+  const autoAdjustRevertBtn = document.getElementById('autoAdjustRevertBtn');
+  const autoAdjustKeepBtn = document.getElementById('autoAdjustKeepBtn');
+
+  function showAutoAdjustHint() {
+    if (!autoAdjustHintEl) return;
+    autoAdjustHintEl.classList.remove('hidden');
+  }
+
+  function hideAutoAdjustHint() {
+    if (!autoAdjustHintEl) return;
+    autoAdjustHintEl.classList.add('hidden');
+  }
+
+  function normalizeDetection(detection) {
+    if (!detection || !detection.hasObject || !detection.boundingBox) return detection;
+    const b = detection.boundingBox;
+
+    const category = detection.category || b.category || 'object';
+    const label = detection.label || b.label || 'Main Object';
+    const semanticConfidence = detection.semanticConfidence || b.semanticConfidence || detection.confidence || 0.85;
+
+    const shapeType = detection.shapeType || b.shapeType || 'polygon';
+    const circle = detection.circle || b.circle || null;
+    const contour = detection.contour || b.contour || null;
+    const contours = detection.contours || (detection.contour ? [detection.contour] : (b.contour ? [b.contour] : (Array.isArray(detection.boundingBoxes) ? detection.boundingBoxes.map(x => x?.contour).filter(Boolean) : null)));
+    const rowExtents = detection.rowExtents || b.rowExtents || null;
+    const svgPath = detection.svgPath || b.svgPath || null;
+    const svgPaths = detection.svgPaths || (detection.svgPath ? [detection.svgPath] : (b.svgPath ? [b.svgPath] : null));
+    const smoothSvgPath = detection.smoothSvgPath || b.smoothSvgPath || null;
+    const smoothSvgPaths = detection.smoothSvgPaths || (detection.smoothSvgPath ? [detection.smoothSvgPath] : (b.smoothSvgPath ? [b.smoothSvgPath] : null));
+
+    detection.category = category;
+    detection.label = label;
+    detection.semanticConfidence = semanticConfidence;
+    detection.shapeType = shapeType;
+    detection.circle = circle;
+    detection.contour = contour;
+    detection.contours = contours;
+    detection.rowExtents = rowExtents;
+    detection.svgPath = svgPath;
+    detection.svgPaths = svgPaths;
+    detection.smoothSvgPath = smoothSvgPath;
+    detection.smoothSvgPaths = smoothSvgPaths;
+
+    b.category = category;
+    b.label = label;
+    b.semanticConfidence = semanticConfidence;
+    b.shapeType = shapeType;
+    b.circle = circle;
+    b.contour = contour;
+    b.contours = contours;
+    b.rowExtents = rowExtents;
+    b.svgPath = svgPath;
+    b.svgPaths = svgPaths;
+    b.smoothSvgPath = smoothSvgPath;
+    b.smoothSvgPaths = smoothSvgPaths;
+
+    if (Array.isArray(detection.boundingBoxes)) {
+      detection.boundingBoxes = detection.boundingBoxes.map((box, idx) => ({
+        ...box,
+        category: box.category || (idx === 0 ? category : 'object'),
+        label: box.label || (idx === 0 ? label : 'Main Object'),
+        semanticConfidence: box.semanticConfidence || semanticConfidence,
+        shapeType: box.shapeType || (idx === 0 ? shapeType : 'polygon'),
+        circle: box.circle || (idx === 0 ? circle : null),
+        contour: box.contour || (contours && contours[idx]) || contour,
+        contours: box.contours || (contours ? [contours[idx] || contour] : null),
+        rowExtents: box.rowExtents || (idx === 0 ? rowExtents : null),
+        svgPath: box.svgPath || (svgPaths && svgPaths[idx]) || svgPath,
+        smoothSvgPath: box.smoothSvgPath || (smoothSvgPaths && smoothSvgPaths[idx]) || smoothSvgPath
+      }));
+    }
+
+    return detection;
+  }
+
+  let pendingRevert = res.pendingRevertAdjustment;
+  if (res.scheduledAutoAdjustment) {
+    storage.remove('scheduledAutoAdjustment');
+  }
+
+  if (res.wallpaperObjectDetection?.hasObject && res.wallpaperObjectDetection?.boundingBox) {
+    const isLegacy = !res.wallpaperObjectDetection.contour && !res.wallpaperObjectDetection.circle;
+    if (isLegacy && appState.background) {
+      detectMainObject(appState.background).then((refreshed) => {
+        if (refreshed && refreshed.hasObject && refreshed.boundingBox) {
+          const upgraded = normalizeDetection({
+            status: 'ready',
+            hasObject: true,
+            imageSrc: appState.background,
+            confidence: refreshed.confidence || 0.85,
+            ...refreshed,
+            detectedAt: Date.now()
+          });
+          storage.set({ wallpaperObjectDetection: upgraded });
+        }
+      }).catch(() => {});
+    }
+
+    const normDet = normalizeDetection(res.wallpaperObjectDetection);
+    activeDetectionBoundingBox = normDet.boundingBox;
+    activeDetectionBoundingBoxes = normDet.boundingBoxes || [normDet.boundingBox];
+    activeDetectionImageDims = normDet.imageDims || null;
+    const wsRect = workspace.getBoundingClientRect();
+    currentObjectBox = mapObjectBoxToGrid(
+      activeDetectionBoundingBox,
+      activeDetectionImageDims,
+      { width: window.innerWidth, height: window.innerHeight },
+      wsRect,
+      bootGrid,
+      activeDetectionBoundingBoxes
+    );
+  }
+
+  if (pendingRevert && pendingRevert.movedWidgets && Object.keys(pendingRevert.movedWidgets).length > 0) {
+    showAutoAdjustHint();
+  }
+
+  if (autoAdjustRevertBtn) {
+    autoAdjustRevertBtn.addEventListener('click', async () => {
+      const stored = await storage.get(['pendingRevertAdjustment']);
+      const revertData = stored.pendingRevertAdjustment || pendingRevert;
+      if (revertData) {
+        const reverted = revertWidgetAdjustments(
+          positions,
+          sizes,
+          revertData.movedWidgets,
+          revertData.previousPositions,
+          revertData.previousSizes
+        );
+        Object.assign(positions, reverted.newPositions);
+        Object.assign(sizes, reverted.newSizes);
+
+        await storage.set({
+          positions: serializeLogicalPositions(positions),
+          sizes: serializeLogicalSizes(sizes)
+        });
+        await storage.remove('pendingRevertAdjustment');
+        pendingRevert = null;
+        currentObjectBox = null;
+        activeDetectionBoundingBox = null;
+        activeDetectionBoundingBoxes = null;
+        activeDetectionImageDims = null;
+
+        relayoutWidgetsToGrid();
+      }
+      hideAutoAdjustHint();
+    });
+  }
+
+  if (autoAdjustKeepBtn) {
+    autoAdjustKeepBtn.addEventListener('click', async () => {
+      await storage.remove('pendingRevertAdjustment');
+      pendingRevert = null;
+      hideAutoAdjustHint();
+    });
+  }
+
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName !== 'local') return;
+    if (changes.aiChatSettings?.newValue) {
+      appState.aiChatSettings = sanitizeAIChatSettings(changes.aiChatSettings.newValue);
+    }
+    if (changes.pendingRevertAdjustment) {
+      if (!changes.pendingRevertAdjustment.newValue) {
+        pendingRevert = null;
+        hideAutoAdjustHint();
+      } else {
+        pendingRevert = changes.pendingRevertAdjustment.newValue;
+        showAutoAdjustHint();
+      }
+    }
+    if (changes.wallpaperObjectDetection) {
+      const newDet = changes.wallpaperObjectDetection.newValue;
+      if (newDet?.hasObject && newDet?.boundingBox) {
+        const normDet = normalizeDetection(newDet);
+        activeDetectionBoundingBox = normDet.boundingBox;
+        activeDetectionBoundingBoxes = normDet.boundingBoxes || [normDet.boundingBox];
+        activeDetectionImageDims = normDet.imageDims || null;
+        const liveGrid = computeGrid(workspace);
+        const wsRect = workspace.getBoundingClientRect();
+        currentObjectBox = mapObjectBoxToGrid(
+          activeDetectionBoundingBox,
+          activeDetectionImageDims,
+          { width: window.innerWidth, height: window.innerHeight },
+          wsRect,
+          liveGrid,
+          activeDetectionBoundingBoxes
+        );
+      } else {
+        activeDetectionBoundingBox = null;
+        activeDetectionBoundingBoxes = null;
+        activeDetectionImageDims = null;
+        currentObjectBox = null;
+      }
+    }
+    if (!document.body.classList.contains('widget-moving')) {
+      let layoutNeedsUpdate = false;
+      if (changes.positions?.newValue) {
+        Object.assign(positions, changes.positions.newValue);
+        layoutNeedsUpdate = true;
+      }
+      if (changes.sizes?.newValue) {
+        Object.assign(sizes, changes.sizes.newValue);
+        layoutNeedsUpdate = true;
+      }
+      if (layoutNeedsUpdate) {
+        relayoutWidgetsToGrid();
+      }
+    }
+  });
+
+  document.addEventListener('widget-visibility-changed', (e) => {
+    if (e.detail?.id) {
+      visibleWidgets[e.detail.id] = e.detail.visible;
+      relayoutWidgetsToGrid();
+    }
+  });
+
+  document.addEventListener('trigger-wallpaper-auto-adjust', async () => {
+    const stored = await storage.get([
+      'wallpaperObjectDetection',
+      'background',
+      'visibleWidgets',
+      'positions',
+      'sizes',
+      'pendingRevertAdjustment',
+      'scheduledAutoAdjustment'
+    ]);
+    let detection = stored.wallpaperObjectDetection;
+    const currentBg = appState.background || DEFAULT_BACKGROUND;
+
+    // Cache freshness: if detection is missing, was computed for a different wallpaper, or lacks contour metadata, re-detect!
+    const isLegacyOrIncomplete = !detection?.contour && !detection?.circle;
+    if (!detection || !detection.hasObject || !detection.boundingBox || detection.imageSrc !== currentBg || isLegacyOrIncomplete) {
+      const resDetect = await detectMainObject(currentBg);
+      if (resDetect && resDetect.hasObject && resDetect.boundingBox) {
+        detection = normalizeDetection({
+          status: 'ready',
+          hasObject: true,
+          imageSrc: currentBg,
+          confidence: resDetect.confidence || 0.85,
+          boundingBox: resDetect.boundingBox,
+          boundingBoxes: resDetect.boundingBoxes || [resDetect.boundingBox],
+          imageDims: resDetect.imageDims || null,
+          shapeType: resDetect.shapeType || resDetect.boundingBox?.shapeType || 'polygon',
+          circle: resDetect.circle || resDetect.boundingBox?.circle || null,
+          contour: resDetect.contour || resDetect.boundingBox?.contour || null,
+          contours: resDetect.contours || (resDetect.contour ? [resDetect.contour] : (resDetect.boundingBox?.contour ? [resDetect.boundingBox.contour] : null)),
+          rowExtents: resDetect.rowExtents || resDetect.boundingBox?.rowExtents || null,
+          svgPath: resDetect.svgPath || resDetect.boundingBox?.svgPath || null,
+          svgPaths: resDetect.svgPaths || (resDetect.svgPath ? [resDetect.svgPath] : null),
+          smoothSvgPath: resDetect.smoothSvgPath || resDetect.boundingBox?.smoothSvgPath || null,
+          smoothSvgPaths: resDetect.smoothSvgPaths || (resDetect.smoothSvgPath ? [resDetect.smoothSvgPath] : null),
+          centroid: resDetect.centroid || null,
+          detectedAt: Date.now()
+        });
+        await storage.set({ wallpaperObjectDetection: detection });
+      } else {
+        detection = {
+          status: 'ready',
+          hasObject: false,
+          imageSrc: currentBg,
+          confidence: 0,
+          detectedAt: Date.now()
+        };
+        await storage.set({ wallpaperObjectDetection: detection });
+      }
+    }
+
+    if (detection && detection.hasObject && detection.boundingBox) {
+      normalizeDetection(detection);
+
+      activeDetectionBoundingBox = detection.boundingBox;
+      activeDetectionBoundingBoxes = detection.boundingBoxes || [detection.boundingBox];
+      activeDetectionImageDims = detection.imageDims || null;
+
+      const liveGrid = computeGrid(workspace);
+      const wsRect = workspace.getBoundingClientRect();
+      const objectBox = mapObjectBoxToGrid(
+        activeDetectionBoundingBox,
+        activeDetectionImageDims,
+        { width: window.innerWidth, height: window.innerHeight },
+        wsRect,
+        liveGrid,
+        activeDetectionBoundingBoxes
+      );
+      currentObjectBox = objectBox;
+
+      // Show the temporary outline HUD overlay so the user visually sees what was detected
+      showDetectionOutline(detection, { duration: 4500, title: 'Detected Subject', gridBox: objectBox });
+
+      if (stored.visibleWidgets) Object.assign(visibleWidgets, stored.visibleWidgets);
+      if (stored.positions) Object.assign(positions, stored.positions);
+      if (stored.sizes) Object.assign(sizes, stored.sizes);
+
+      // Preserve pre-existing pre-adjustment snapshot if one is already pending
+      const preAdjustmentPositions = stored.pendingRevertAdjustment?.previousPositions
+        ? cloneDeep(stored.pendingRevertAdjustment.previousPositions)
+        : (pendingRevert?.previousPositions ? cloneDeep(pendingRevert.previousPositions) : cloneDeep(snapshotPositions(positions)));
+      const preAdjustmentSizes = stored.pendingRevertAdjustment?.previousSizes
+        ? cloneDeep(stored.pendingRevertAdjustment.previousSizes)
+        : (pendingRevert?.previousSizes ? cloneDeep(pendingRevert.previousSizes) : cloneDeep(snapshotSizes(sizes)));
+
+      const adjustmentResult = adjustWidgetsAwayFromObject({
+        allWidgetIds,
+        visibleWidgets,
+        currentPositions: positions,
+        currentSizes: sizes,
+        objectBox,
+        grid: liveGrid
+      });
+
+      if (adjustmentResult.adjusted) {
+        Object.assign(positions, adjustmentResult.newPositions);
+        Object.assign(sizes, adjustmentResult.newSizes);
+
+        pendingRevert = {
+          movedWidgets: adjustmentResult.movedWidgets,
+          previousPositions: preAdjustmentPositions,
+          previousSizes: preAdjustmentSizes,
+          appliedAt: Date.now()
+        };
+
+        await storage.set({
+          positions: serializeLogicalPositions(positions),
+          sizes: serializeLogicalSizes(sizes),
+          pendingRevertAdjustment: pendingRevert
+        });
+        await storage.remove('scheduledAutoAdjustment');
+
+        relayoutWidgetsToGrid();
+        showAutoAdjustHint();
+      } else {
+        await storage.remove('scheduledAutoAdjustment');
+        alert('All widgets are already positioned away from the main subject in your wallpaper.');
+      }
+    } else {
+      await storage.remove('scheduledAutoAdjustment');
+      alert('No distinct focal subject was recognized in this wallpaper.');
+    }
+  });
+
+  document.addEventListener('inspect-wallpaper-detection', async () => {
+    const currentBg = appState.background || DEFAULT_BACKGROUND;
+    const stored = await storage.get(['wallpaperObjectDetection']);
+    let detection = stored.wallpaperObjectDetection;
+
+    const isLegacyOrIncomplete = !detection?.contour && !detection?.circle;
+    if (!detection || !detection.hasObject || !detection.boundingBox || detection.imageSrc !== currentBg || isLegacyOrIncomplete) {
+      const resDetect = await detectMainObject(currentBg);
+      if (resDetect && resDetect.hasObject && resDetect.boundingBox) {
+        detection = normalizeDetection({
+          status: 'ready',
+          hasObject: true,
+          imageSrc: currentBg,
+          confidence: resDetect.confidence || 0.85,
+          boundingBox: resDetect.boundingBox,
+          boundingBoxes: resDetect.boundingBoxes || [resDetect.boundingBox],
+          imageDims: resDetect.imageDims || null,
+          shapeType: resDetect.shapeType || resDetect.boundingBox?.shapeType || 'polygon',
+          circle: resDetect.circle || resDetect.boundingBox?.circle || null,
+          contour: resDetect.contour || resDetect.boundingBox?.contour || null,
+          contours: resDetect.contours || (resDetect.contour ? [resDetect.contour] : (resDetect.boundingBox?.contour ? [resDetect.boundingBox.contour] : null)),
+          rowExtents: resDetect.rowExtents || resDetect.boundingBox?.rowExtents || null,
+          svgPath: resDetect.svgPath || resDetect.boundingBox?.svgPath || null,
+          svgPaths: resDetect.svgPaths || (resDetect.svgPath ? [resDetect.svgPath] : null),
+          smoothSvgPath: resDetect.smoothSvgPath || resDetect.boundingBox?.smoothSvgPath || null,
+          smoothSvgPaths: resDetect.smoothSvgPaths || (resDetect.smoothSvgPath ? [resDetect.smoothSvgPath] : null),
+          centroid: resDetect.centroid || null,
+          detectedAt: Date.now()
+        });
+        await storage.set({ wallpaperObjectDetection: detection });
+      }
+    }
+
+    if (detection && detection.hasObject && detection.boundingBox) {
+      normalizeDetection(detection);
+
+      activeDetectionBoundingBox = detection.boundingBox;
+      activeDetectionBoundingBoxes = detection.boundingBoxes || [detection.boundingBox];
+      activeDetectionImageDims = detection.imageDims || null;
+
+      const liveGrid = computeGrid(workspace);
+      const wsRect = workspace.getBoundingClientRect();
+      const objectBox = mapObjectBoxToGrid(
+        activeDetectionBoundingBox,
+        activeDetectionImageDims,
+        { width: window.innerWidth, height: window.innerHeight },
+        wsRect,
+        liveGrid,
+        activeDetectionBoundingBoxes
+      );
+      currentObjectBox = objectBox;
+      showDetectionOutline(detection, { duration: 5000, title: 'Detected Subject', gridBox: objectBox });
+    } else {
+      alert('No distinct focal subject recognized in current wallpaper.');
+    }
+  });
+
   relayoutWidgetsToGrid();
   let relayoutRaf = 0;
   window.addEventListener('resize', () => {
     if (relayoutRaf) cancelAnimationFrame(relayoutRaf);
     relayoutRaf = requestAnimationFrame(() => {
       relayoutRaf = 0;
+      if (activeDetectionBoundingBox) {
+        const liveGrid = computeGrid(workspace);
+        const wsRect = workspace.getBoundingClientRect();
+        currentObjectBox = mapObjectBoxToGrid(
+          activeDetectionBoundingBox,
+          activeDetectionImageDims,
+          { width: window.innerWidth, height: window.innerHeight },
+          wsRect,
+          liveGrid,
+          activeDetectionBoundingBoxes
+        );
+      }
       relayoutWidgetsToGrid();
     });
   });
@@ -845,10 +1424,16 @@ async function bootstrap() {
     widgetIds: allWidgetIds
   });
 
-  document.body.classList.remove('app-booting');
+  } catch (err) {
+    console.error('Error during bootstrap:', err);
+  } finally {
+    document.body.classList.remove('app-booting');
+  }
 
   // outside click to close settings is handled in settings module
 }
 
-bootstrap();
+if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+  bootstrap();
+}
 

@@ -27,6 +27,21 @@
             <button id="exitEditLayout" class="btn-primary edit-mode-done" type="button">Done</button>
         </div>
 
+        <!-- Automatic widget adjustment notification banner -->
+        <div id="autoAdjustHint" class="auto-adjust-hint hidden" role="status" aria-live="polite">
+            <div class="auto-adjust-content">
+                <span class="auto-adjust-icon">✨</span>
+                <div class="auto-adjust-text">
+                    <strong>Widgets adjusted</strong>
+                    <span>Moved away from the main subject in your wallpaper.</span>
+                </div>
+            </div>
+            <div class="auto-adjust-actions">
+                <button id="autoAdjustRevertBtn" class="btn-secondary auto-adjust-btn" type="button">Revert</button>
+                <button id="autoAdjustKeepBtn" class="btn-primary auto-adjust-btn" type="button">Keep</button>
+            </div>
+        </div>
+
         <main id="workspace">
             <!-- Widgets -->
             <div class="widget" id="widget-search" data-widget="search">
@@ -84,7 +99,7 @@
                 <div class="widget-body ai-chat-body">
                     <div id="aiChatGreeting" class="ai-chat-greeting">
                         <span id="aiChatGreetingText" class="ai-chat-greeting-text"></span>
-                        <span id="aiChatNoKeyHint" class="ai-chat-nokey-hint hidden">Set your OpenRouter API key in Settings → AI Chat</span>
+                        <span id="aiChatNoKeyHint" class="ai-chat-nokey-hint hidden">Set your API key in Settings → AI Chat</span>
                     </div>
                     <div id="aiChatMessages" class="ai-chat-messages hidden"></div>
                     <div class="ai-chat-compose">
@@ -418,6 +433,18 @@
                                     <label>Built-in wallpapers <small style="opacity:0.6">(auto-sets accent color)</small></label>
                                     <div id="wallpaperGrid" class="wallpaper-grid"></div>
                                 </div>
+                                <div class="field" style="margin-top: 10px; padding: 10px 12px; background: rgba(255,255,255,0.04); border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; gap: 12px;">
+                                        <div>
+                                            <div style="font-weight:600; font-size:13px;">Smart Object Avoidance</div>
+                                            <small style="opacity:0.7;">Adjust on-screen widgets away from your wallpaper's main subject</small>
+                                        </div>
+                                        <div style="display:flex; gap: 8px; align-items:center;">
+                                            <button id="inspectDetectedSubjectBtn" class="btn-secondary" type="button" style="font-size:12px; padding:6px 12px; white-space:nowrap;" title="Highlight detected subject with a temporary outline overlay">Inspect Subject</button>
+                                            <button id="adjustWidgetsNowBtn" class="btn-primary" type="button" style="font-size:12px; padding:6px 14px; white-space:nowrap;">Auto Adjust Now</button>
+                                        </div>
+                                    </div>
+                                </div>
                                 <div class="settings-subheading">Daily wallpaper (Unsplash)
                                     <button id="unsplashApiHelp" class="btn-secondary help-btn" type="button" title="How to get Unsplash API key" aria-label="How to get Unsplash API key">?</button>
                                 </div>
@@ -515,10 +542,24 @@
                         <div class="settings-panel" data-panel="aichat" role="tabpanel">
                             <div class="settings-fields">
                                 <section id="aiChatSettingsSection" class="settings-subsection">
-                                    <div class="settings-subheading">OpenRouter API</div>
+                                    <div class="settings-subheading">AI Provider</div>
+                                    <select id="aiChatProvider" aria-label="AI Provider">
+                                        <option value="openrouter">OpenRouter</option>
+                                        <option value="openai">OpenAI</option>
+                                        <option value="google">Google AI Studio</option>
+                                    </select>
+                                    <div class="settings-subheading" id="aiChatSubheading" style="margin-top: 12px;">OpenRouter API</div>
                                     <input id="aiChatApiKey" type="password" placeholder="OpenRouter API key (sk-or-...)">
-                                    <input id="aiChatModel" type="text" placeholder="Model (e.g. openrouter/auto)">
-                                    <small>Powers the AI Chat widget. Get a free key at openrouter.ai.</small>
+                                    <input id="aiChatModel" type="text" placeholder="Model (e.g. openrouter/auto)" list="aiChatModelList">
+                                    <datalist id="aiChatModelList">
+                                        <option value="gemini-3.5-flash"></option>
+                                        <option value="gemini-3.5-flash-lite"></option>
+                                        <option value="gemini-2.0-flash"></option>
+                                        <option value="gemini-flash-latest"></option>
+                                        <option value="gpt-4o-mini"></option>
+                                        <option value="openrouter/auto"></option>
+                                    </datalist>
+                                    <small id="aiChatHint">Powers the AI Chat widget. Get a free key at openrouter.ai.</small>
                                     <div class="field-actions">
                                         <button id="saveAiChatSettings" class="btn-primary" type="button">Save</button>
                                     </div>

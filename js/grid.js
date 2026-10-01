@@ -80,7 +80,7 @@ export function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
 }
 
-export function findNearestFreeCell(targetCol, targetRow, cwNeeded, chNeeded, existingItems, grid) {
+export function findNearestFreeCell(targetCol, targetRow, cwNeeded, chNeeded, existingItems, grid, obstacleBox = null) {
   // occupancy grid
   const occ = Array.from({ length: grid.rows }, () => Array(grid.cols).fill(false));
   for (const k in existingItems) {
@@ -93,11 +93,41 @@ export function findNearestFreeCell(targetCol, targetRow, cwNeeded, chNeeded, ex
     }
   }
 
+  // Also mark obstacleBox cells as occupied so findNearestFreeCell avoids them
+  const obsBoxes = Array.isArray(obstacleBox?.boxes) && obstacleBox.boxes.length > 0
+    ? obstacleBox.boxes
+    : (obstacleBox && Number.isFinite(obstacleBox.colMin) ? [obstacleBox] : []);
+  for (const b of obsBoxes) {
+    if (Array.isArray(b.rowSpans) && b.rowSpans.length > 0) {
+      for (let r = 0; r < b.rowSpans.length && r < grid.rows; r++) {
+        const sp = b.rowSpans[r];
+        if (sp) {
+          const minC = Math.max(0, sp.colMin);
+          const maxC = Math.min(grid.cols - 1, sp.colMax);
+          for (let c = minC; c <= maxC; c++) {
+            occ[r][c] = true;
+          }
+        }
+      }
+    } else {
+      const minR = Math.max(0, b.rowMin);
+      const maxR = Math.min(grid.rows - 1, b.rowMax);
+      const minC = Math.max(0, b.colMin);
+      const maxC = Math.min(grid.cols - 1, b.colMax);
+      for (let r = minR; r <= maxR; r++) {
+        for (let c = minC; c <= maxC; c++) {
+          occ[r][c] = true;
+        }
+      }
+    }
+  }
+
   const maxDist = Math.max(grid.cols, grid.rows) * 2;
+  const sxOrder = targetCol >= Math.floor(grid.cols / 2) ? [ 1, -1 ] : [ -1, 1 ];
   for (let d = 0; d <= maxDist; d++) {
     for (let dr = -d; dr <= d; dr++) {
       const dc = d - Math.abs(dr);
-      for (const sx of [ -1, 1 ]) {
+      for (const sx of sxOrder) {
         const c = targetCol + dc * sx;
         const r = targetRow + dr;
         if (tryArea(c, r)) return { col: c, row: r };

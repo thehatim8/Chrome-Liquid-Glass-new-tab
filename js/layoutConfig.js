@@ -63,3 +63,43 @@ export function resolveDynamicGridSize(availableWidth, availableHeight, cfg = la
   const rows = Math.max(cfg.gridRows, Math.min(cfg.maxRows, Math.round(availableHeight / t)));
   return { cols, rows };
 }
+
+// Explicit minimum width and height for each widget.
+// Specifically, todo is usable at 2x2.
+export const WIDGET_MIN_SIZES = {
+  'widget-todo':        { cols: 2, rows: 2 },
+  'widget-clock':       { cols: 2, rows: 2 },
+  'widget-search':      { cols: 4, rows: 2 },
+  'widget-image':       { cols: 2, rows: 2 },
+  'widget-notes':       { cols: 2, rows: 2 },
+  'widget-aichat':      { cols: 3, rows: 3 },
+  'widget-calendar':    { cols: 3, rows: 2 },
+  'widget-dayprogress': { cols: 2, rows: 2 },
+  'widget-pomodoro':    { cols: 3, rows: 2 },
+  'widget-sports':      { cols: 3, rows: 2 },
+  'widget-weather':     { cols: 3, rows: 2 },
+  'widget-currency':    { cols: 2, rows: 2 }
+};
+
+function lookupMinSize(id) {
+  if (!id || typeof id !== 'string') return null;
+  if (WIDGET_MIN_SIZES[id]) return WIDGET_MIN_SIZES[id];
+  const withPrefix = id.startsWith('widget-') ? id : `widget-${id}`;
+  if (WIDGET_MIN_SIZES[withPrefix]) return WIDGET_MIN_SIZES[withPrefix];
+  const withoutPrefix = id.startsWith('widget-') ? id.slice('widget-'.length) : id;
+  if (WIDGET_MIN_SIZES[withoutPrefix]) return WIDGET_MIN_SIZES[withoutPrefix];
+  return null;
+}
+
+export function minWidgetCols(id) {
+  const base = Math.max(1, getLayoutConfig().minWidgetCols);
+  const def = lookupMinSize(id);
+  return def ? Math.max(base, def.cols) : base;
+}
+
+export function minWidgetRows(id) {
+  const base = Math.max(1, getLayoutConfig().minWidgetRows);
+  const def = lookupMinSize(id);
+  return def ? Math.max(base, def.rows) : base;
+}
+

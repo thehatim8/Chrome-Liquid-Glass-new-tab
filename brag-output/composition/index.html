@@ -1,0 +1,1221 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1920, height=1080" />
+  <title>Chrome Liquid Glass — Master Showcase</title>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-font-smoothing: antialiased;
+    }
+    html, body {
+      margin: 0;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      background: #040711;
+      color: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    #root {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      background: radial-gradient(circle at 50% 12%, #0e1b38 0%, #040711 75%);
+    }
+
+    /* Ambient dynamic backdrop glow */
+    .ambient-glow {
+      position: absolute;
+      top: -120px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 1200px;
+      height: 480px;
+      background: radial-gradient(ellipse at center, rgba(56, 189, 248, 0.22) 0%, rgba(56, 189, 248, 0) 70%);
+      filter: blur(60px);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* PERSISTENT HEADER BAR */
+    .top-header {
+      position: absolute;
+      top: 14px;
+      left: 140px;
+      right: 140px;
+      height: 48px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 100;
+    }
+    .brand-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 20px;
+      background: #091124;
+      border: 1.5px solid #38bdf8;
+      border-radius: 999px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+    }
+    .brand-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+    }
+    .brand-title {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      color: #38bdf8;
+      text-transform: uppercase;
+    }
+    .brand-version {
+      font-size: 12px;
+      font-weight: 700;
+      color: #040711;
+      background: #38bdf8;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+
+    .theme-pill-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 20px;
+      background: #091124;
+      border: 1.5px solid rgba(255, 255, 255, 0.25);
+      border-radius: 999px;
+      font-size: 16px;
+      font-weight: 700;
+      color: #ffffff;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+    }
+    .theme-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #38bdf8;
+      box-shadow: 0 0 10px #38bdf8;
+      transition: background 0.4s ease, box-shadow 0.4s ease;
+    }
+
+    /* PERSISTENT SUBTITLES BAR */
+    .caption-container {
+      position: absolute;
+      bottom: 14px;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: center;
+      z-index: 100;
+      pointer-events: none;
+    }
+    .caption-capsule {
+      background: rgba(7, 14, 34, 0.94);
+      border: 2px solid #38bdf8;
+      border-radius: 999px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85);
+      padding: 10px 36px;
+      font-size: 21px;
+      font-weight: 700;
+      color: #ffffff;
+      text-align: center;
+      max-width: 1400px;
+      line-height: 1.35;
+    }
+    .caption-highlight {
+      color: #38bdf8;
+    }
+
+    /* BROWSER WORKSPACE FRAME (1640 x 950 -> stage 1640 x 904 ~= 16:9 ratio) */
+    .browser-viewport-frame {
+      position: absolute;
+      top: 68px;
+      left: 140px;
+      width: 1640px;
+      height: 948px;
+      border-radius: 18px;
+      background: #090e1f;
+      border: 1.5px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.9);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      z-index: 20;
+    }
+
+    /* Window Header Bar */
+    .browser-titlebar {
+      height: 44px;
+      background: #111a33;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .window-controls {
+      display: flex;
+      gap: 7px;
+    }
+    .win-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+    }
+    .dot-close { background: #ff5f56; }
+    .dot-min { background: #ffbd2e; }
+    .dot-max { background: #27c93f; }
+    .browser-tab-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 16px;
+      background: #0a1124;
+      border-radius: 8px 8px 0 0;
+      border-top: 1px solid rgba(56, 189, 248, 0.6);
+      font-size: 13px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+    .browser-url-pill {
+      flex: 1;
+      max-width: 620px;
+      height: 28px;
+      background: #060b17;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      font-size: 12px;
+      color: #94a3b8;
+      margin-left: 16px;
+      gap: 8px;
+    }
+
+    /* SCENE CONTAINER */
+    .stage-content {
+      position: relative;
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .scene-view {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+    }
+
+    /* SCENE 1: DEFAULT CHROME TAB */
+    #scene-1 {
+      opacity: 1;
+      background: #ffffff;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: #202124;
+    }
+    .google-logo {
+      font-size: 92px;
+      font-weight: 700;
+      letter-spacing: -2px;
+      margin-bottom: 32px;
+      color: #1a73e8;
+    }
+    .google-search-bar {
+      width: 720px;
+      height: 56px;
+      border-radius: 28px;
+      border: 1.5px solid #dadce0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      display: flex;
+      align-items: center;
+      padding: 0 22px;
+      font-size: 19px;
+      color: #5f6368;
+      margin-bottom: 36px;
+      gap: 14px;
+    }
+    .sterile-stamp {
+      padding: 14px 38px;
+      background: #000000;
+      color: #ffffff;
+      font-size: 30px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      border-radius: 100px;
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.25);
+      transform: rotate(-6deg);
+    }
+
+    /* SCENE 2: REVEAL CARDS */
+    #scene-2 {
+      background: radial-gradient(circle at center, #122146 0%, #060c1d 80%);
+      flex-direction: column;
+      gap: 36px;
+    }
+    .reveal-badge-top {
+      padding: 8px 24px;
+      background: rgba(56, 189, 248, 0.15);
+      border: 1.5px solid #38bdf8;
+      border-radius: 999px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #38bdf8;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .reveal-headline {
+      font-size: 52px;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      text-align: center;
+      color: #ffffff;
+    }
+    .reveal-cards-row {
+      display: flex;
+      gap: 24px;
+      width: 1480px;
+      justify-content: center;
+    }
+    .reveal-card-item {
+      flex: 1;
+      padding: 32px 26px;
+      background: #091329;
+      border: 1.5px solid rgba(56, 189, 248, 0.5);
+      border-radius: 18px;
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 14px;
+    }
+    .reveal-card-icon {
+      font-size: 44px;
+    }
+    .reveal-card-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+    .reveal-card-desc {
+      font-size: 15px;
+      color: #94a3b8;
+      line-height: 1.45;
+    }
+
+    /* HERO LOOK SCENES (SCENES 3, 4, 5, 6, 7) */
+    .screenshot-hero-img {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform-origin: center center;
+    }
+
+    /* GLOWING WIDGET SPOTLIGHT FRAMES (Highlights widgets without covering them!) */
+    .widget-focus-ring {
+      position: absolute;
+      border-radius: 16px;
+      border: 2px solid #38bdf8;
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.6), inset 0 0 12px rgba(56, 189, 248, 0.25);
+      pointer-events: none;
+      z-index: 35;
+      opacity: 0;
+      transform: scale(0.96);
+    }
+
+    /* SLEEK FLOATING POINTER CALLOUT PILLS */
+    .spotlight-pill {
+      position: absolute;
+      padding: 10px 18px;
+      background: #091124;
+      border: 1.5px solid #38bdf8;
+      border-radius: 999px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.85);
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 40;
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    .spotlight-pill-icon {
+      font-size: 20px;
+    }
+    .spotlight-pill-text {
+      font-size: 15px;
+      font-weight: 800;
+      color: #ffffff;
+      white-space: nowrap;
+    }
+    .spotlight-pill-sub {
+      font-size: 13px;
+      font-weight: 600;
+      color: #38bdf8;
+      margin-left: 4px;
+    }
+
+    /* SMART BANNER NOTIFICATION (matches extension autoAdjustHint) */
+    .spotlight-pill.center-pill {
+      left: 0;
+      right: 0;
+      margin: 0 auto;
+      width: fit-content;
+    }
+
+    /* SMART BANNER NOTIFICATION (matches extension autoAdjustHint) */
+    .smart-detection-banner {
+      position: absolute;
+      top: 24px;
+      left: 0;
+      right: 0;
+      margin: 0 auto;
+      width: fit-content;
+      padding: 12px 28px;
+      background: #091329;
+      border: 1.5px solid #f59e0b;
+      border-radius: 999px;
+      box-shadow: 0 14px 34px rgba(245, 158, 11, 0.35);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 50;
+      opacity: 0;
+    }
+    .smart-banner-text {
+      font-size: 16px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+    .smart-banner-sub {
+      font-size: 14px;
+      color: #f59e0b;
+      font-weight: 600;
+    }
+
+    /* SCENE 8: MODULAR DRAG & SNAP DEMO */
+    #scene-8 {
+      background: radial-gradient(circle at center, #0e1b38 0%, #050a17 80%);
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 44px 60px 36px 60px;
+    }
+    .grid-demo-header {
+      text-align: center;
+    }
+    .grid-demo-title {
+      font-size: 38px;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 6px;
+    }
+    .grid-demo-sub {
+      font-size: 18px;
+      color: #38bdf8;
+      font-weight: 600;
+    }
+    .grid-widgets-container {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 24px;
+      width: 100%;
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+    .grid-widget-box {
+      background: #0a1429;
+      border: 1.5px solid rgba(56, 189, 248, 0.5);
+      border-radius: 18px;
+      padding: 22px 20px;
+      box-shadow: 0 14px 32px rgba(0, 0, 0, 0.6);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+    }
+    .grid-widget-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 17px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+    .grid-widget-badge {
+      font-size: 11px;
+      font-weight: 700;
+      background: rgba(56, 189, 248, 0.2);
+      color: #38bdf8;
+      padding: 3px 9px;
+      border-radius: 999px;
+    }
+    .grid-widget-main {
+      font-size: 28px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+    .grid-widget-detail {
+      font-size: 14px;
+      color: #94a3b8;
+      line-height: 1.4;
+    }
+
+    .mac-dock-preview {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      background: #091329;
+      border: 1.5px solid rgba(56, 189, 248, 0.6);
+      border-radius: 22px;
+      padding: 12px 30px;
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.8);
+      margin: 0 auto;
+    }
+    .dock-icon-box {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      background: #111e3b;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+    }
+
+    /* SCENE 9: GRAND FINALE / CTA */
+    #scene-9 {
+      background: radial-gradient(circle at center, #102148 0%, #040814 80%);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 28px;
+    }
+    .finale-cards-fan {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .fan-card {
+      width: 240px;
+      height: 135px;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 2px solid rgba(56, 189, 248, 0.5);
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.8);
+      transform-origin: 50% 50%;
+    }
+    .card-tilt-l2 { transform: rotate(-8deg) translateY(6px); }
+    .card-tilt-l1 { transform: rotate(-4deg); }
+    .card-hero { transform: scale(1.14); z-index: 5; border-color: #38bdf8; box-shadow: 0 18px 45px rgba(56, 189, 248, 0.55); }
+    .card-tilt-r1 { transform: rotate(4deg); }
+    .card-tilt-r2 { transform: rotate(8deg) translateY(6px); }
+    .fan-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .finale-headline {
+      font-size: 50px;
+      font-weight: 900;
+      color: #ffffff;
+      letter-spacing: -0.02em;
+      text-align: center;
+    }
+    .finale-subline {
+      font-size: 20px;
+      font-weight: 600;
+      color: #94a3b8;
+      text-align: center;
+      margin-top: -14px;
+    }
+    .finale-features-row {
+      display: flex;
+      gap: 32px;
+      margin: 6px 0;
+    }
+    .finale-feature-chip {
+      font-size: 16px;
+      font-weight: 700;
+      color: #ffffff;
+      background: #091329;
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      padding: 8px 20px;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .finale-check {
+      color: #38bdf8;
+      font-weight: 900;
+    }
+    .cta-btn-large {
+      padding: 18px 52px;
+      background: #38bdf8;
+      color: #030712;
+      font-size: 24px;
+      font-weight: 900;
+      border-radius: 999px;
+      border: none;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 14px 36px rgba(56, 189, 248, 0.6);
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div
+    id="root"
+    data-composition-id="main"
+    data-start="0"
+    data-duration="96"
+    data-width="1920"
+    data-height="1080"
+  >
+    <div class="ambient-glow"></div>
+
+    <!-- PERSISTENT TOP HEADER -->
+    <header class="top-header">
+      <div class="brand-pill">
+        <img class="brand-icon" src="assets/icon128.png" alt="Logo">
+        <span class="brand-title">Chrome Liquid Glass</span>
+        <span class="brand-version">v1.1.0</span>
+      </div>
+      <div id="theme-pill" class="theme-pill-tag">
+        <span id="theme-dot" class="theme-dot"></span>
+        <span id="theme-pill-label">Default Chrome Tab</span>
+      </div>
+    </header>
+
+    <!-- PERSISTENT SUBTITLES BAR -->
+    <div class="caption-container">
+      <div id="caption-box" class="caption-capsule">
+        Every day, you open dozens of new tabs in Chrome.
+      </div>
+    </div>
+
+    <!-- AUDIO LAYERS -->
+    <audio id="bgm" data-start="0" data-track-index="1" data-volume="0.14" src="assets/music/happy-beats-business-moves-vol-1-by-ende-dot-app.mp3"></audio>
+    <audio id="vo" data-start="0" data-track-index="2" data-volume="1" src="assets/voiceover.wav"></audio>
+    
+    <!-- SOUND EFFECTS -->
+    <audio id="sfx-drop-stamp" data-start="4.2" data-track-index="3" data-volume="0.75" src="assets/sfx/interface/drop_001.ogg"></audio>
+    <audio id="sfx-switch-engine" data-start="11.5" data-track-index="4" data-volume="0.7" src="assets/sfx/interface/switch_001.ogg"></audio>
+    <audio id="sfx-look1-reveal" data-start="22.0" data-track-index="5" data-volume="0.65" src="assets/sfx/interface/switch_001.ogg"></audio>
+    <audio id="sfx-look2-reveal" data-start="33.5" data-track-index="6" data-volume="0.65" src="assets/sfx/interface/switch_002.ogg"></audio>
+    <audio id="sfx-look3-reveal" data-start="44.5" data-track-index="7" data-volume="0.65" src="assets/sfx/interface/switch_001.ogg"></audio>
+    <audio id="sfx-look4-reveal" data-start="54.5" data-track-index="8" data-volume="0.65" src="assets/sfx/interface/switch_002.ogg"></audio>
+    <audio id="sfx-look5-reveal" data-start="66.0" data-track-index="9" data-volume="0.65" src="assets/sfx/interface/switch_001.ogg"></audio>
+    <audio id="sfx-drag-grid" data-start="76.8" data-track-index="10" data-volume="0.6" src="assets/sfx/interface/click_001.ogg"></audio>
+    <audio id="sfx-snap-grid" data-start="80.2" data-track-index="11" data-volume="0.75" src="assets/sfx/interface/drop_001.ogg"></audio>
+    <audio id="sfx-impact-outro" data-start="85.0" data-track-index="12" data-volume="0.85" src="assets/sfx/impact/impactBell_heavy_000.ogg"></audio>
+
+    <!-- MAIN BROWSER WORKSPACE -->
+    <div class="browser-viewport-frame">
+      <div class="browser-titlebar">
+        <div class="window-controls">
+          <div class="win-dot dot-close"></div>
+          <div class="win-dot dot-min"></div>
+          <div class="win-dot dot-max"></div>
+        </div>
+        <div class="browser-tab-item">
+          <span>✨ New Tab</span>
+        </div>
+        <div class="browser-url-pill">
+          <span>🔒</span>
+          <span id="browser-url-text">chrome://newtab</span>
+        </div>
+      </div>
+
+      <div class="stage-content">
+        <!-- SCENE 1: THE DEFAULT TAB DILEMMA (0.0s - 11.5s) -->
+        <div id="scene-1" class="scene-view">
+          <div class="google-logo">Google</div>
+          <div class="google-search-bar">
+            <span>🔍</span>
+            <span>Search Google or type a URL</span>
+          </div>
+          <div id="sterile-badge" class="sterile-stamp" data-layout-allow-overlap="true">
+            BORING & STERILE
+          </div>
+        </div>
+
+        <!-- SCENE 2: THE REVEAL: LIQUID GLASS UPGRADE (11.5s - 22.0s) -->
+        <div id="scene-2" class="scene-view">
+          <div class="reveal-badge-top">Dynamic Frosted Glass Engine</div>
+          <h1 class="reveal-headline">The Ultimate New Tab Upgrade</h1>
+          <div class="reveal-cards-row">
+            <div class="reveal-card-item">
+              <div class="reveal-card-icon">🪟</div>
+              <div class="reveal-card-title">Dynamic Glass Cards</div>
+              <div class="reveal-card-desc">Backdrop blur, translucency & glowing edge borders.</div>
+            </div>
+            <div class="reveal-card-item">
+              <div class="reveal-card-icon">📐</div>
+              <div class="reveal-card-title">Magnetic Grid Snap</div>
+              <div class="reveal-card-desc">Long-press to drag and lock widgets anywhere.</div>
+            </div>
+            <div class="reveal-card-item">
+              <div class="reveal-card-icon">🖼️</div>
+              <div class="reveal-card-title">Intelligent Subject Aware</div>
+              <div class="reveal-card-desc">Smart detection moves widgets away from wallpaper art.</div>
+            </div>
+            <div class="reveal-card-item">
+              <div class="reveal-card-icon">💻</div>
+              <div class="reveal-card-title">macOS Floating Dock</div>
+              <div class="reveal-card-desc">Bouncing icons with custom app launcher shortcuts.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SCENE 3: LOOK 1: MIDNIGHT EXECUTIVE - BENTLEY (22.0s - 33.5s) -->
+        <div id="scene-3" class="scene-view">
+          <img id="img-look1" class="screenshot-hero-img" src="assets/look1-bentley-dark.png" alt="Midnight Executive Theme">
+          <!-- Non-obscuring Focus Rings around widgets -->
+          <div id="ring-look1-cal" class="widget-focus-ring" style="top: 260px; left: 130px; width: 220px; height: 260px;"></div>
+          <div id="ring-look1-sports" class="widget-focus-ring" style="bottom: 95px; right: 40px; width: 185px; height: 170px;"></div>
+          <div id="ring-look1-clock" class="widget-focus-ring" style="top: 135px; right: 40px; width: 185px; height: 140px;"></div>
+          <div id="ring-look1-dock" class="widget-focus-ring" style="bottom: 15px; left: 520px; width: 590px; height: 50px;"></div>
+          
+          <!-- Sleek Pointer Pills in open center space -->
+          <div id="pill-look1-cal" class="spotlight-pill" style="top: 290px; left: 370px;">
+            <span class="spotlight-pill-icon">📅</span>
+            <span class="spotlight-pill-text">Interactive Calendar & Tasks</span>
+          </div>
+          <div id="pill-look1-sports" class="spotlight-pill" style="bottom: 120px; right: 245px;">
+            <span class="spotlight-pill-icon">🏆</span>
+            <span class="spotlight-pill-text">Live FIFA Match Scores</span>
+          </div>
+          <div id="pill-look1-clock" class="spotlight-pill" style="top: 155px; right: 245px;">
+            <span class="spotlight-pill-icon">⚡</span>
+            <span class="spotlight-pill-text">Digital Clock & Apps Hub</span>
+          </div>
+          <div id="pill-look1-dock" class="spotlight-pill center-pill" style="bottom: 80px;">
+            <span class="spotlight-pill-icon">💻</span>
+            <span class="spotlight-pill-text">Custom Glass macOS Dock</span>
+          </div>
+        </div>
+
+        <!-- SCENE 4: LOOK 2: KYOTO SERENITY - MOUNT FUJI (33.5s - 44.5s) -->
+        <div id="scene-4" class="scene-view">
+          <img id="img-look2" class="screenshot-hero-img" src="assets/look2-fuji-pagoda.jpg" alt="Kyoto Serenity Theme">
+          <div id="ring-look2-search" class="widget-focus-ring" style="top: 140px; left: 40px; width: 310px; height: 100px;"></div>
+          <div id="pill-look2-search" class="spotlight-pill" style="top: 155px; left: 370px;">
+            <span class="spotlight-pill-icon">🔍</span>
+            <span class="spotlight-pill-text">Multi-Engine Search</span>
+            <span class="spotlight-pill-sub">Google • Bing • DDG</span>
+          </div>
+          <div id="pill-look2-glass" class="spotlight-pill center-pill" style="top: 70px;">
+            <span class="spotlight-pill-icon">🗻</span>
+            <span class="spotlight-pill-text">Kyoto Serenity</span>
+            <span class="spotlight-pill-sub">Pure White Frosted Glass</span>
+          </div>
+          <div id="pill-look2-zen" class="spotlight-pill center-pill" style="bottom: 90px;">
+            <span class="spotlight-pill-icon">🧘</span>
+            <span class="spotlight-pill-text">Distraction-Free Productivity Flow</span>
+          </div>
+        </div>
+
+        <!-- SCENE 5: LOOK 3: THE SUPERCAR AMBER - MCLAREN (44.5s - 54.5s) -->
+        <div id="scene-5" class="scene-view">
+          <img id="img-look3" class="screenshot-hero-img" src="assets/look3-mclaren-amber.png" alt="McLaren Amber Theme">
+          <!-- Subject detection banner -->
+          <div id="banner-smart-detection" class="smart-detection-banner">
+            <span style="font-size: 22px;">✨</span>
+            <span class="smart-banner-text">Smart Wallpaper Subject Detection</span>
+            <span class="smart-banner-sub">Widgets moved away from the McLaren supercar!</span>
+          </div>
+          <!-- Highlight around the car to demonstrate it's unobstructed -->
+          <div id="ring-look3-car" class="widget-focus-ring" style="top: 340px; left: 430px; width: 780px; height: 490px; border-color: #f59e0b; box-shadow: 0 0 24px rgba(245, 158, 11, 0.45);"></div>
+          <div id="pill-look3-amber" class="spotlight-pill" style="bottom: 95px; right: 245px; border-color: #f59e0b;">
+            <span class="spotlight-pill-icon">⚡</span>
+            <span class="spotlight-pill-text">Warm Amber Glass Tint</span>
+            <span class="spotlight-pill-sub" style="color: #f59e0b;">Bodywork Match</span>
+          </div>
+        </div>
+
+        <!-- SCENE 6: LOOK 4: STRAW HAT ANIME - LUFFY (54.5s - 66.0s) -->
+        <div id="scene-6" class="scene-view">
+          <img id="img-look4" class="screenshot-hero-img" src="assets/look4-anime-luffy.png" alt="Anime Straw Hat Theme">
+          <div id="ring-look4-ai" class="widget-focus-ring" style="top: 270px; right: 40px; width: 185px; height: 330px; border-color: #eab308; box-shadow: 0 0 20px rgba(234, 179, 8, 0.45);"></div>
+          <div id="ring-look4-notes" class="widget-focus-ring" style="top: 340px; right: 235px; width: 120px; height: 180px; border-color: #eab308;"></div>
+          <div id="ring-look4-dock" class="widget-focus-ring" style="bottom: 15px; left: 520px; width: 590px; height: 50px; border-color: #eab308;"></div>
+
+          <div id="pill-look4-ai" class="spotlight-pill" style="top: 290px; right: 245px; border-color: #eab308;">
+            <span class="spotlight-pill-icon">🤖</span>
+            <span class="spotlight-pill-text">AI Chat: "Ask me anything, Hatim"</span>
+            <span class="spotlight-pill-sub" style="color: #eab308;">OpenRouter</span>
+          </div>
+          <div id="pill-look4-notes" class="spotlight-pill" style="top: 470px; right: 370px; border-color: #eab308;">
+            <span class="spotlight-pill-icon">📝</span>
+            <span class="spotlight-pill-text">Notes with Instant Math Solver</span>
+            <span class="spotlight-pill-sub" style="color: #eab308;">(10+10= ➔ 20)</span>
+          </div>
+          <div id="pill-look4-cream" class="spotlight-pill center-pill" style="top: 70px; border-color: #eab308;">
+            <span class="spotlight-pill-icon">👒</span>
+            <span class="spotlight-pill-text">Straw Hat Theme</span>
+            <span class="spotlight-pill-sub" style="color: #eab308;">Warm Cream Frosted Cards</span>
+          </div>
+          <div id="pill-look4-dock" class="spotlight-pill center-pill" style="bottom: 80px; border-color: #eab308;">
+            <span class="spotlight-pill-icon">💻</span>
+            <span class="spotlight-pill-text">Custom Shortcuts: Notion, WhatsApp, YouTube</span>
+          </div>
+        </div>
+
+        <!-- SCENE 7: LOOK 5: CYBER RUNWAY - YELLOW HYPERCAR (66.0s - 76.0s) -->
+        <div id="scene-7" class="scene-view">
+          <img id="img-look5" class="screenshot-hero-img" src="assets/look5-yellow-supercar.jpg" alt="Cyber Runway Yellow Theme">
+          <div id="ring-look5-clock" class="widget-focus-ring" style="top: 135px; right: 40px; width: 185px; height: 130px; border-color: #fbbf24; box-shadow: 0 0 20px rgba(251, 191, 36, 0.45);"></div>
+          <div id="ring-look5-ai" class="widget-focus-ring" style="top: 275px; right: 40px; width: 185px; height: 330px; border-color: #fbbf24;"></div>
+          
+          <div id="pill-look5-clock" class="spotlight-pill" style="top: 150px; right: 245px; border-color: #fbbf24;">
+            <span class="spotlight-pill-icon">⚡</span>
+            <span class="spotlight-pill-text">Digital Clock (19:00)</span>
+            <span class="spotlight-pill-sub" style="color: #fbbf24;">High Contrast</span>
+          </div>
+          <div id="pill-look5-ai" class="spotlight-pill" style="top: 380px; right: 245px; border-color: #fbbf24;">
+            <span class="spotlight-pill-icon">💛</span>
+            <span class="spotlight-pill-text">Smoked Obsidian Glass</span>
+            <span class="spotlight-pill-sub" style="color: #fbbf24;">Yellow Action Buttons</span>
+          </div>
+          <div id="pill-look5-runway" class="spotlight-pill center-pill" style="top: 70px; border-color: #fbbf24;">
+            <span class="spotlight-pill-icon">🏁</span>
+            <span class="spotlight-pill-text">Cyber Runway</span>
+            <span class="spotlight-pill-sub" style="color: #fbbf24;">Dark Glass for Night Power Users</span>
+          </div>
+        </div>
+
+        <!-- SCENE 8: MODULAR GRID & DRAG-TO-SNAP (76.0s - 85.0s) -->
+        <div id="scene-8" class="scene-view">
+          <div class="grid-demo-header">
+            <div class="grid-demo-title">Magnetic Drag-and-Snap Grid Engine</div>
+            <div class="grid-demo-sub">Long-press any widget to unlock full modular freedom</div>
+          </div>
+          <div class="grid-widgets-container">
+            <div id="grid-card-ai" class="grid-widget-box">
+              <div class="grid-widget-head">
+                <span>🤖 AI Chat</span>
+                <span class="grid-widget-badge">OpenRouter</span>
+              </div>
+              <div class="grid-widget-main">Ask Hatim</div>
+              <div class="grid-widget-detail">Query Claude, GPT-4, or open LLMs directly in your new tab.</div>
+            </div>
+            <div id="grid-card-notes" class="grid-widget-box">
+              <div class="grid-widget-head">
+                <span>📝 Smart Notes</span>
+                <span class="grid-widget-badge">Calculator</span>
+              </div>
+              <div class="grid-widget-main">(10+10=) ➔ 20</div>
+              <div class="grid-widget-detail">Inline instant math evaluation right as you type.</div>
+            </div>
+            <div id="grid-card-sports" class="grid-widget-box">
+              <div class="grid-widget-head">
+                <span>🏆 Sports</span>
+                <span class="grid-widget-badge">Live</span>
+              </div>
+              <div class="grid-widget-main">FIFA & Cricket</div>
+              <div class="grid-widget-detail">Real-time match scores via Football-Data & CricAPI.</div>
+            </div>
+            <div id="grid-card-cal" class="grid-widget-box">
+              <div class="grid-widget-head">
+                <span>📅 Calendar & Tasks</span>
+                <span class="grid-widget-badge">Active</span>
+              </div>
+              <div class="grid-widget-main">Sept 24 Selected</div>
+              <div class="grid-widget-detail">Interactive date picker, agenda & todo list.</div>
+            </div>
+          </div>
+          <div id="mac-dock-row" class="mac-dock-preview">
+            <div class="dock-icon-box">🌐</div>
+            <div class="dock-icon-box">💻</div>
+            <div class="dock-icon-box">💬</div>
+            <div class="dock-icon-box">🎵</div>
+            <div class="dock-icon-box">⚡</div>
+            <div class="dock-icon-box">⚙️</div>
+          </div>
+        </div>
+
+        <!-- SCENE 9: GRAND FINALE / CALL TO ACTION (85.0s - 96.0s) -->
+        <div id="scene-9" class="scene-view">
+          <div class="finale-cards-fan">
+            <div class="fan-card card-tilt-l2"><img src="assets/look1-bentley-dark.png?v=fan" alt="Bentley Midnight"></div>
+            <div class="fan-card card-tilt-l1"><img src="assets/look2-fuji-pagoda.jpg?v=fan" alt="Kyoto Fuji"></div>
+            <div class="fan-card card-hero"><img src="assets/look3-mclaren-amber.png?v=fan" alt="McLaren Amber"></div>
+            <div class="fan-card card-tilt-r1"><img src="assets/look4-anime-luffy.png?v=fan" alt="Anime Luffy"></div>
+            <div class="fan-card card-tilt-r2"><img src="assets/look5-yellow-supercar.jpg?v=fan" alt="Yellow Supercar"></div>
+          </div>
+          <h1 class="finale-headline">CHROME LIQUID GLASS</h1>
+          <p class="finale-subline">Transform your boring new tab into an aesthetic liquid glass command center.</p>
+          <div class="finale-features-row">
+            <div class="finale-feature-chip"><span class="finale-check">✓</span> 5+ Curated Looks</div>
+            <div class="finale-feature-chip"><span class="finale-check">✓</span> Movable Widgets & Grid Snap</div>
+            <div class="finale-feature-chip"><span class="finale-check">✓</span> Intelligent Wallpaper Awareness</div>
+            <div class="finale-feature-chip"><span class="finale-check">✓</span> 100% Free & Open Source</div>
+          </div>
+          <button id="cta-button" class="cta-btn-large" type="button">
+            <span>Add to Chrome — Free</span>
+            <span>➔</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.__timelines = window.__timelines || {};
+    const tl = gsap.timeline({ paused: true });
+    window.__timelines["main"] = tl;
+
+    // Helper to safely update caption and theme pill
+    function setMeta(captionHtml, themeText, dotColor) {
+      const cap = document.getElementById("caption-box");
+      const pill = document.getElementById("theme-pill-label");
+      const dot = document.getElementById("theme-dot");
+      if (cap) cap.innerHTML = captionHtml;
+      if (pill && themeText) pill.innerText = themeText;
+      if (dot && dotColor) {
+        dot.style.background = dotColor;
+        dot.style.boxShadow = `0 0 10px ${dotColor}`;
+      }
+    }
+
+    // ==========================================
+    // SCENE 1 TIMELINE (0.0s - 11.5s)
+    // 0.10s - 3.58s: "Every day, you open dozens of new tabs in Chrome."
+    // 3.53s - 8.63s: "And every single time, you're greeted by the exact same boring, sterile search bar."
+    // 8.63s - 11.57s: "What if your new tab was your ultimate command center?"
+    // ==========================================
+    tl.call(() => setMeta("Every day, you open dozens of new tabs in Chrome.", "Default Chrome Tab", "#94a3b8"), null, 0.10);
+    
+    tl.fromTo("#sterile-badge", 
+      { opacity: 0, scale: 2.2, rotation: -20 }, 
+      { opacity: 1, scale: 1, rotation: -6, duration: 0.5, ease: "back.out(2)" }, 
+      3.8
+    );
+    tl.call(() => setMeta("And every single time, you're greeted by the exact same <span class='caption-highlight'>boring, sterile search bar</span>.", "Default Chrome Tab", "#ef4444"), null, 3.53);
+    
+    tl.call(() => setMeta("What if your new tab was your <span class='caption-highlight'>ultimate command center</span>?", "Transform Your Tab", "#38bdf8"), null, 8.63);
+
+    tl.to("#scene-1", {
+      opacity: 0,
+      scale: 1.06,
+      duration: 0.5,
+      ease: "power2.in"
+    }, 11.0);
+
+    // ==========================================
+    // SCENE 2 TIMELINE: REVEAL (11.5s - 22.0s)
+    // 11.57s - 16.10s: "Meet Chrome Liquid Glass — the ultimate frosted glass upgrade for your browser."
+    // 16.10s - 22.01s: "Featuring dynamic translucent cards, magnetic grid snapping, and intelligent wallpaper awareness."
+    // ==========================================
+    tl.call(() => setMeta("Meet <span class='caption-highlight'>Chrome Liquid Glass</span> — the ultimate frosted glass upgrade.", "Liquid Glass Engine", "#38bdf8"), null, 11.57);
+    tl.fromTo("#scene-2", 
+      { opacity: 0, scale: 0.94 }, 
+      { opacity: 1, scale: 1, duration: 0.6, ease: "power2.out" }, 
+      11.5
+    );
+    tl.fromTo(".reveal-card-item", 
+      { opacity: 0, y: 30 }, 
+      { opacity: 1, y: 0, duration: 0.5, stagger: 0.12, ease: "back.out(1.5)" }, 
+      12.2
+    );
+    tl.call(() => setMeta("Featuring <span class='caption-highlight'>dynamic translucent cards, magnetic grid snapping</span>, and wallpaper awareness.", "Glass Architecture", "#38bdf8"), null, 16.10);
+
+    tl.to("#scene-2", {
+      opacity: 0,
+      scale: 0.96,
+      duration: 0.5,
+      ease: "power2.in"
+    }, 21.5);
+
+    // ==========================================
+    // SCENE 3 TIMELINE: LOOK 1 MIDNIGHT EXECUTIVE (22.0s - 33.5s)
+    // 22.01s - 26.94s: "Start with the Midnight Executive look — sleek dark frosted glass with crimson accents."
+    // 26.94s - 33.46s: "Monitor live FIFA World Cup scores, launch entertainment apps, track your calendar, and access your custom dock."
+    // ==========================================
+    tl.call(() => setMeta("Look 1: <span class='caption-highlight'>Midnight Executive</span> — sleek dark frosted glass with crimson accents.", "Theme: Midnight Executive", "#ef4444"), null, 22.01);
+    tl.fromTo("#scene-3", 
+      { opacity: 0, scale: 0.95 }, 
+      { opacity: 1, scale: 1, duration: 0.6, ease: "power3.out" }, 
+      22.0
+    );
+    tl.fromTo("#img-look1", 
+      { scale: 1.0 }, 
+      { scale: 1.035, duration: 11.5, ease: "sine.inOut" }, 
+      22.0
+    );
+    // Staggered spotlight rings and non-obscuring pills
+    tl.to("#ring-look1-cal", { opacity: 1, scale: 1, duration: 0.4 }, 23.5);
+    tl.to("#pill-look1-cal", { opacity: 1, y: 0, duration: 0.4, ease: "back.out(1.8)" }, 23.7);
+
+    tl.call(() => setMeta("Monitor <span class='caption-highlight'>live FIFA World Cup scores</span>, entertainment apps & custom dock.", "Theme: Midnight Executive", "#ef4444"), null, 26.94);
+    tl.to("#ring-look1-clock", { opacity: 1, scale: 1, duration: 0.4 }, 27.2);
+    tl.to("#pill-look1-clock", { opacity: 1, y: 0, duration: 0.4, ease: "back.out(1.8)" }, 27.4);
+
+    tl.to("#ring-look1-sports", { opacity: 1, scale: 1, duration: 0.4 }, 29.0);
+    tl.to("#pill-look1-sports", { opacity: 1, y: 0, duration: 0.4, ease: "back.out(1.8)" }, 29.2);
+
+    tl.to("#ring-look1-dock", { opacity: 1, scale: 1, duration: 0.4 }, 30.8);
+    tl.to("#pill-look1-dock", { opacity: 1, y: 0, duration: 0.4, ease: "back.out(1.8)" }, 31.0);
+
+    tl.to("#scene-3", {
+      opacity: 0,
+      scale: 0.96,
+      duration: 0.5,
+      ease: "power2.in"
+    }, 33.0);
+
+    // ==========================================
+    // SCENE 4 TIMELINE: LOOK 2 KYOTO SERENITY (33.5s - 44.5s)
+    // 33.46s - 35.49s: "Need absolute focus?"
+    // 35.49s - 37.99s: "Switch to the Kyoto Serenity theme."
+    // 37.99s - 44.67s: "Clean, bright frosted translucency floats effortlessly over Mount Fuji and autumn maple leaves for a distraction-free workflow."
+    // ==========================================
+    tl.call(() => setMeta("Need absolute focus? Switch to the <span class='caption-highlight'>Kyoto Serenity</span> theme.", "Theme: Kyoto Serenity", "#f43f5e"), null, 33.46);
+    tl.fromTo("#scene-4", 
+      { opacity: 0, scale: 0.95 }, 
+      { opacity: 1, scale: 1, duration: 0.6, ease: "power3.out" }, 
+      33.5
+    );
+    tl.fromTo("#img-look2", 
+      { scale: 1.0 }, 
+      { scale: 1.035, duration: 11.0, ease: "sine.inOut" }, 
+      33.5
+    );
+    tl.to("#pill-look2-glass", { opacity: 1, y: 0, duration: 0.5, ease: "back.out(1.8)" }, 34.5);
+
+    tl.call(() => setMeta("Clean, bright <span class='caption-highlight'>frosted translucency</span> over Mount Fuji for zero distractions.", "Theme: Kyoto Serenity", "#f43f5e"), null, 37.99);
+    tl.to("#ring-look2-search", { opacity: 1, scale: 1, duration: 0.4 }, 38.5);
+    tl.to("#pill-look2-search", { opacity: 1, y: 0, duration: 0.4, ease: "back.out(1.8)" }, 38.7);
+    tl.to("#pill-look2-zen", { opacity: 1, y: 0, duration: 0.5, ease: "back.out(1.8)" }, 41.0);
+
+    tl.to("#scene-4", {
+      opacity: 0,
+      scale: 0.96,
+      duration: 0.5,
+      ease: "power2.in"
+    }, 44.0);
+
+    // ==========================================
+    // SCENE 5 TIMELINE: LOOK 3 MCLAREN AMBER (44.5s - 54.5s)
+    // 44.67s - 46.55s: "Got a favorite wallpaper?"
+    // 46.55s - 54.35s: "Smart subject detection automatically moves your widgets away from the McLaren supercar, keeping your artwork completely unobstructed in rich amber glass."
+    // ==========================================
+    tl.call(() => setMeta("Got a favorite wallpaper? <span class='caption-highlight'>Smart subject detection</span> protects your art.", "Theme: McLaren Amber", "#f59e0b"), null, 44.67);
+    tl.fromTo("#scene-5", 
+      { opacity: 0, scale: 0.95 }, 
+      { opacity: 1, scale: 1, duration: 0.6, ease: "power3.out" }, 
+      44.5
+    );
+    tl.fromTo("#img-look3", 
+      { scale: 1.0 }, 
+      { scale: 1.035, duration: 10.0, ease: "sine.inOut" }, 
+      44.5
+    );
+    // Banner drops down showing the auto-adjust active
+    tl.fromTo("#banner-smart-detection", 
+      { opacity: 0, y: -30 }, 
+      { opacity: 1, y: 0, duration: 0.6, ease: "back.out(1.8)" }, 
+      45.8
+    );
+
+    tl.call(() => setMeta("Widgets <span class='caption-highlight'>automatically move away</span> from the supercar in rich amber glass.", "Theme: McLaren Amber", "#f59e0b"), null, 47.8);
+    tl.to("#ring-look3-car", { opacity: 1, scale: 1, duration: 0.5 }, 48.2);
+    tl.to("#pill-look3-amber", { opacity: 1, y: 0, duration: 0.5, ease: "back.out(1.8)" }, 50.0);
+
+    tl.to("#scene-5", {
+      opacity: 0,
+      scale: 0.96,
+      duration: 0.5,
+      ease: "power2.in"
+    }, 54.0);
+
+    // ==========================================
+    // SCENE 6 TIMELINE: LOOK 4 STRAW HAT ANIME (54.5s - 66.0s)
+    // 54.35s - 57.53s: "Express your passion with the Anime Straw Hat theme."
+    // 57.53s - 66.22s: "Cream-tinted glass cards frame Luffy perfectly, with an integrated AI Chat powered by OpenRouter, notes with instant math solving, and custom dock icons."
+    // ==========================================
+    tl.call(() => setMeta("Look 4: <span class='caption-highlight'>Straw Hat Anime</span> — cream-tinted glass cards frame Luffy perfectly.", "Theme: Straw Hat Anime", "#eab308"), null, 54.35);
+    tl.fromTo("#scene-6", 
+      { opacity: 0, scale: 0.95 }, 
+      { opacity: 1, scale: 1, duration: 0.6, ease: "power3.out" }, 
+      54.5
+    );
+    tl.fromTo("#img-look4", 
+      { scale: 1.0 }, 
+      { scale: 1.035, duration: 11.5, ease: "sine.inOut" }, 
+      54.5
+    );
+    tl.to("#pill-look4-cream", { opacity: 1, y: 0, duration: 0.5, ease: "back.out(1.8)" }, 55.4);
+
+    tl.call(() => setMeta("Integrated <span class='caption-highlight'>AI Chat (OpenRouter)</span>, notes with math solver & custom dock icons.", "Theme: Straw Hat Anime", "#eab308"), null, 57.53);
+    tl.to("#ring-look4-ai", { opacity: 1, scale: 1, duration: 0.4 }, 58.2);
+    tl.to("#pill-look4-ai", { opacity: 1, y: 0, duration: 0.4, ease: "back.out(1.8)" }, 58.4);
+
+    tl.to("#ring-look4-notes", { opacity: 1, scale: 1, duration: 0.4 }, 60.5);
+    tl.to("#pill-look4-notes", { opacity: 1, y: 0, duration: 0.4, ease: "back.out(1.8)" }, 60.7);
+
+    tl.to("#ring-look4-dock", { opacity: 1, scale: 1, duration: 0.4 }, 62.8);
+    tl.to("#pill-look4-dock", { opacity: 1, y: 0, duration: 0.4, ease: "back.out(1.8)" }, 63.0);
+
+    tl.to("#scene-6", {
+      opacity: 0,
+      scale: 0.96,
+      duration: 0.5,
+      ease: "power2.in"
+    }, 65.5);
+
+    // ==========================================
+    // SCENE 7 TIMELINE: LOOK 5 CYBER RUNWAY (66.0s - 76.0s)
+    // 66.22s - 74.86s: "Or push the limits with Cyber Runway — smoked obsidian glass with glowing golden action buttons, instant dark-mode shortcuts, and high-contrast digital precision."
+    // ==========================================
+    tl.call(() => setMeta("Look 5: <span class='caption-highlight'>Cyber Runway</span> — smoked obsidian glass with glowing golden action buttons.", "Theme: Cyber Runway", "#fbbf24"), null, 66.22);
+    tl.fromTo("#scene-7", 
+      { opacity: 0, scale: 0.95 }, 
+      { opacity: 1, scale: 1, duration: 0.6, ease: "power3.out" }, 
+      66.0
+    );
+    tl.fromTo("#img-look5", 
+      { scale: 1.0 }, 
+      { scale: 1.035, duration: 10.0, ease: "sine.inOut" }, 
+      66.0
+    );
+    tl.to("#pill-look5-runway", { opacity: 1, y: 0, duration: 0.5, ease: "back.out(1.8)" }, 67.2);
+
+    tl.to("#ring-look5-clock", { opacity: 1, scale: 1, duration: 0.4 }, 68.8);
+    tl.to("#pill-look5-clock", { opacity: 1, y: 0, duration: 0.4, ease: "back.out(1.8)" }, 69.0);
+
+    tl.to("#ring-look5-ai", { opacity: 1, scale: 1, duration: 0.4 }, 71.2);
+    tl.to("#pill-look5-ai", { opacity: 1, y: 0, duration: 0.4, ease: "back.out(1.8)" }, 71.4);
+
+    tl.to("#scene-7", {
+      opacity: 0,
+      scale: 0.96,
+      duration: 0.5,
+      ease: "power2.in"
+    }, 75.5);
+
+    // ==========================================
+    // SCENE 8 TIMELINE: MODULAR GRID & SNAP (76.0s - 85.0s)
+    // 74.86s - 77.27s: "Every single element is modular."
+    // 77.27s - 84.34s: "Long-press any widget to unlock full drag-and-drop freedom, snap to the magnetic grid, and build your dream workspace in seconds."
+    // ==========================================
+    tl.call(() => setMeta("Every single element is modular. <span class='caption-highlight'>Drag and snap widgets</span> on the magnetic grid.", "Modular Layout", "#38bdf8"), null, 76.0);
+    tl.fromTo("#scene-8", 
+      { opacity: 0, scale: 0.94 }, 
+      { opacity: 1, scale: 1, duration: 0.6, ease: "power3.out" }, 
+      76.0
+    );
+    tl.fromTo(".grid-widget-box", 
+      { opacity: 0, y: 30, scale: 0.9 }, 
+      { opacity: 1, y: 0, scale: 1, duration: 0.5, stagger: 0.12, ease: "back.out(1.6)" }, 
+      76.4
+    );
+    // Drag & snap simulation on Notes card
+    tl.to("#grid-card-notes", {
+      scale: 1.08,
+      borderColor: "#38bdf8",
+      boxShadow: "0 20px 50px rgba(56, 189, 248, 0.4)",
+      duration: 0.4,
+      ease: "power2.out"
+    }, 78.5);
+    tl.to("#grid-card-notes", {
+      scale: 1.0,
+      borderColor: "rgba(56, 189, 248, 0.5)",
+      boxShadow: "0 14px 32px rgba(0, 0, 0, 0.6)",
+      duration: 0.35,
+      ease: "power2.inOut"
+    }, 80.2);
+
+    tl.fromTo("#mac-dock-row", 
+      { opacity: 0, y: 30 }, 
+      { opacity: 1, y: 0, duration: 0.6, ease: "back.out(1.8)" }, 
+      80.5
+    );
+    tl.to(".dock-icon-box", {
+      y: -12,
+      stagger: 0.08,
+      duration: 0.22,
+      yoyo: true,
+      repeat: 1,
+      ease: "sine.inOut"
+    }, 81.6);
+
+    tl.to("#scene-8", {
+      opacity: 0,
+      scale: 0.96,
+      duration: 0.5,
+      ease: "power2.in"
+    }, 84.5);
+
+    // ==========================================
+    // SCENE 9 TIMELINE: GRAND FINALE / CTA (85.0s - 96.0s)
+    // 84.34s - 87.03s: "Stop settling for a blank white page."
+    // 87.03s - 89.89s: "Upgrade your browser with Chrome Liquid Glass."
+    // 89.89s - 92.63s: "100% free and open source."
+    // 92.63s - 94.40s: "Add to Chrome today."
+    // ==========================================
+    tl.call(() => setMeta("Stop settling for a blank page. <span class='caption-highlight'>Transform your new tab today</span>.", "Chrome Web Store", "#38bdf8"), null, 85.0);
+    tl.fromTo("#scene-9", 
+      { opacity: 0, scale: 0.9 }, 
+      { opacity: 1, scale: 1, duration: 0.7, ease: "power3.out" }, 
+      85.0
+    );
+    tl.fromTo(".fan-card", 
+      { opacity: 0, y: 35, scale: 0.8 }, 
+      { opacity: 1, y: 0, scale: 1, duration: 0.5, stagger: 0.08, ease: "back.out(1.5)" }, 
+      85.3
+    );
+    tl.call(() => setMeta("Upgrade to <span class='caption-highlight'>Chrome Liquid Glass</span> — 100% Free & Open Source.", "Add To Chrome", "#38bdf8"), null, 88.5);
+    tl.fromTo(".finale-feature-chip", 
+      { opacity: 0, y: 15 }, 
+      { opacity: 1, y: 0, duration: 0.4, stagger: 0.09, ease: "power2.out" }, 
+      88.8
+    );
+    tl.fromTo("#cta-button", 
+      { scale: 0.9 }, 
+      { scale: 1, duration: 0.6, ease: "elastic.out(1, 0.5)" }, 
+      91.5
+    );
+    tl.to("#cta-button", {
+      scale: 1.05,
+      yoyo: true,
+      repeat: 3,
+      duration: 0.7,
+      ease: "sine.inOut"
+    }, 92.5);
+
+    tl.seek(0);
+  </script>
+</body>
+</html>
